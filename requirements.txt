@@ -1,0 +1,5 @@
+fastapi uvicorn
+
+"fastapi[standard]"
+
+pip install fastapi uvicorn sqlalchemy psycopg2-binary python-dotenv

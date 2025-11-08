@@ -1,0 +1,308 @@
+[
+  {
+    "name": "Food Assistance"
+  },
+  {
+    "name": "Emergency Shelter"
+  },
+  {
+    "name": "Medical Aid"
+  },
+  {
+    "name": "Mental Health Support"
+  },
+  {
+    "name": "Employment Services"
+  },
+  {
+    "name": "Legal Aid"
+  },
+  {
+    "name": "Childcare Support"
+  },
+  {
+    "name": "Elderly Care"
+  },
+  {
+    "name": "Financial Counseling"
+  },
+  {
+    "name": "Debt Relief Guidance"
+  },
+  {
+    "name": "Rental Assistance"
+  },
+  {
+    "name": "Utilities Support"
+  },
+  {
+    "name": "Transportation Assistance"
+  },
+  {
+    "name": "Education Grants"
+  },
+  {
+    "name": "Scholarship Guidance"
+  },
+  {
+    "name": "Digital Literacy Training"
+  },
+  {
+    "name": "Language Classes"
+  },
+  {
+    "name": "Immigration Support"
+  },
+  {
+    "name": "Domestic Violence Support"
+  },
+  {
+    "name": "Community Mediation"
+  },
+  {
+    "name": "Substance Abuse Counseling"
+  },
+  {
+    "name": "Addiction Recovery"
+  },
+  {
+    "name": "Health Screenings"
+  },
+  {
+    "name": "Vaccination Clinics"
+  },
+  {
+    "name": "Dental Care"
+  },
+  {
+    "name": "Vision Care"
+  },
+  {
+    "name": "Hearing Support"
+  },
+  {
+    "name": "Disability Services"
+  },
+  {
+    "name": "Assistive Devices"
+  },
+  {
+    "name": "Caregiver Support"
+  },
+  {
+    "name": "Veteran Services"
+  },
+  {
+    "name": "Youth Mentorship"
+  },
+  {
+    "name": "After-School Programs"
+  },
+  {
+    "name": "Tutoring Services"
+  },
+  {
+    "name": "Sports & Recreation"
+  },
+  {
+    "name": "Arts & Culture Programs"
+  },
+  {
+    "name": "Community Events"
+  },
+  {
+    "name": "Neighborhood Watch"
+  },
+  {
+    "name": "Public Safety Education"
+  },
+  {
+    "name": "Fire Safety Support"
+  },
+  {
+    "name": "Disaster Relief"
+  },
+  {
+    "name": "Crisis Intervention"
+  },
+  {
+    "name": "Hotline Support"
+  },
+  {
+    "name": "Counseling Services"
+  },
+  {
+    "name": "Family Therapy"
+  },
+  {
+    "name": "Parenting Workshops"
+  },
+  {
+    "name": "Prenatal Support"
+  },
+  {
+    "name": "Infant Care Resources"
+  },
+  {
+    "name": "Nutrition Education"
+  },
+  {
+    "name": "Food Pantry Referrals"
+  },
+  {
+    "name": "Meal Delivery"
+  },
+  {
+    "name": "Clothing Assistance"
+  },
+  {
+    "name": "Hygiene Kits"
+  },
+  {
+    "name": "Personal Care Items"
+  },
+  {
+    "name": "Job Placement"
+  },
+  {
+    "name": "Resume Coaching"
+  },
+  {
+    "name": "Interview Preparation"
+  },
+  {
+    "name": "Skills Training"
+  },
+  {
+    "name": "Apprenticeships"
+  },
+  {
+    "name": "Small Business Support"
+  },
+  {
+    "name": "Microloans Guidance"
+  },
+  {
+    "name": "Financial Literacy Classes"
+  },
+  {
+    "name": "Tax Filing Assistance"
+  },
+  {
+    "name": "Benefits Enrollment"
+  },
+  {
+    "name": "Insurance Navigation"
+  },
+  {
+    "name": "Healthcare Navigation"
+  },
+  {
+    "name": "Prescription Assistance"
+  },
+  {
+    "name": "Chronic Illness Support"
+  },
+  {
+    "name": "Palliative Care Resources"
+  },
+  {
+    "name": "Grief Counseling"
+  },
+  {
+    "name": "Peer Support Groups"
+  },
+  {
+    "name": "Social Isolation Support"
+  },
+  {
+    "name": "Community Outreach"
+  },
+  {
+    "name": "Volunteer Opportunities"
+  },
+  {
+    "name": "Environmental Programs"
+  },
+  {
+    "name": "Recycling & Waste Help"
+  },
+  {
+    "name": "Energy Efficiency Support"
+  },
+  {
+    "name": "Home Repairs"
+  },
+  {
+    "name": "Accessibility Upgrades"
+  },
+  {
+    "name": "Pest Control Assistance"
+  },
+  {
+    "name": "Water & Sanitation Help"
+  },
+  {
+    "name": "Public Benefits Appeals"
+  },
+  {
+    "name": "Tenant Rights Support"
+  },
+  {
+    "name": "Consumer Protection Help"
+  },
+  {
+    "name": "Identity Theft Support"
+  },
+  {
+    "name": "Technology Access"
+  },
+  {
+    "name": "Device Lending"
+  },
+  {
+    "name": "Internet Connectivity Help"
+  },
+  {
+    "name": "Library Programs"
+  },
+  {
+    "name": "Civic Engagement"
+  },
+  {
+    "name": "Voter Registration Help"
+  },
+  {
+    "name": "Conflict Resolution"
+  },
+  {
+    "name": "Refugee Resettlement"
+  },
+  {
+    "name": "Cultural Integration Support"
+  },
+  {
+    "name": "LGBTQ+ Support Services"
+  },
+  {
+    "name": "Women\u2019s Health Support"
+  },
+  {
+    "name": "Men\u2019s Health Support"
+  },
+  {
+    "name": "Prenatal Nutrition"
+  },
+  {
+    "name": "Public Transportation Passes"
+  },
+  {
+    "name": "Mobility Training"
+  },
+  {
+    "name": "Emergency Cash Assistance"
+  },
+  {
+    "name": "Holiday Assistance"
+  }
+]
