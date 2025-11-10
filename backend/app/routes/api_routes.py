@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Form
 from app.controllers.login_controller import LoginController
 from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController, searchUserController, getUserProfilesController, createUserProfilesController, updateUserProfilesController, suspendUserProfilesController, reactivateUserProfilesController, searchUserProfilesController
-from app.controllers.pin_controller import getPinRequestsController, createPinRequestController
+from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController
 from app.controllers.csr_controller import getCSRRequestController, searchCSRRequestsController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController
 from app.controllers.pm_controller import createCategoryController, updateCategoryController, deleteCategoryController, getCategoryController, searchCategoryController, generateWeeklyReportController, generateDailyReportController, generateMonthlyReportController
 from app.controllers.assignment_controller import getAllRequestsController, updateRequestController, viewRequestController
@@ -119,17 +119,43 @@ def search_user_profiles(search_input: str):
 
 # ------------------ PIN ------------------
 
-@router.get("/pin-requests", response_model=List)
-def get_pin_requests(id: int, q: Optional[str]):
+# View
+@router.get("/pin-requests")
+def get_pin_requests(id: int, filter: str = ""): # filter is optional search query, and set to none on default
     controller = getPinRequestsController()
-    result = controller.get_pin_requests(id, q)
+    result = controller.get_pin_requests(id, filter)
 
     return result # Return the list of PIN requests objects if success and empty list on failure
 
+# Search
+@router.get("/pin-requests/search")
+def search_pin_requests(search_input: str, pin_user_id: int):
+    controller = searchPinRequestController()
+    result = controller.search_pin_requests(search_input, pin_user_id)
+
+    return result # Return the list of PIN requests objects if success and empty list on failure
+
+# Create
 @router.post("/pin-requests")
-def create_pin_request(request_data: dict):
+def create_pin_request(form_data: dict):
     controller = createPinRequestController()
-    result = controller.create_pin_request(request_data)
+    result = controller.create_pin_request(form_data)
+
+    return result # Return True on success and str on failure
+
+# Delete
+@router.delete("/pin-requests/{request_id}")
+def delete_pin_request(request_id: int):
+    controller = deletePinRequestController()
+    result = controller.delete_pin_request(request_id)
+
+    return result # Return True on success and str on failure
+
+# Update
+@router.put("/pin-requests/{request_id}")
+def update_pin_request(request_id: int, request_data: dict):
+    controller = updatePinRequestController()
+    result = controller.update_pin_request(request_id, request_data)
 
     return result # Return True on success and str on failure
 

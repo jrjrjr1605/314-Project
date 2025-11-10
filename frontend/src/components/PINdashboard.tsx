@@ -61,7 +61,12 @@ function formatDT(dt?: string | null) {
 
 export default function PINDashboard() {
   const [searchParams] = useSearchParams()
-  const pinId = searchParams.get("id")
+  let pinId = searchParams.get("pin_user_id")
+
+  if (!pinId) {
+    const user = JSON.parse(localStorage.getItem("user") || "{}")
+    pinId = user.pin_user_id ? String(user.pin_user_id) : null
+  }
 
   const [requests, setRequests] = useState<PinRequest[]>([])
   const [loading, setLoading] = useState(false)
@@ -91,10 +96,10 @@ export default function PINDashboard() {
     "all" | "pending" | "assigned" | "completed"
   >("all")
 
-  const buildListUrl = (id: string, q?: string) => {
+  const buildListUrl = (id: string, filter?: string) => {
     const u = new URL(`${API_BASE}/api/pin-requests`)
     u.searchParams.set("id", id)
-    if (q && q.trim()) u.searchParams.set("q", q.trim())
+    if (filter && filter.trim()) u.searchParams.set("filter", filter.trim())
     return u.toString()
   }
   const buildUpdateUrl = (reqId: number) =>
@@ -103,11 +108,11 @@ export default function PINDashboard() {
     `${API_BASE}/api/pin-requests/${reqId}`
 
   // ----------- Fetch Requests -----------
-  const fetchRequests = async (id: string, q?: string, signal?: AbortSignal) => {
+  const fetchRequests = async (id: string, filter: string = "", signal?: AbortSignal) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(buildListUrl(id, q), {
+      const res = await fetch(buildListUrl(id, filter), {
         signal,
         headers: { Accept: "application/json" },
       })
@@ -138,18 +143,63 @@ export default function PINDashboard() {
     }
   }
 
+  // --- Manual search hitting a different API ---
+  const handleSearch = async () => {
+    if (!pinId || !query.trim()) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/pin-requests/search?search_input=${encodeURIComponent(
+          query.trim()
+        )}&pin_user_id=${pinId}`,
+        { headers: { Accept: "application/json" } }
+      )
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const data = await res.json()
+      const list = Array.isArray(data) ? data : data.items ?? []
+      setRequests(list)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || "Search failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // --- Reset search ---
+  const handleReset = async () => {
+    if (!pinId) return
+    setQuery("")
+    await fetchRequests(pinId, "")
+  }
+
   // ----------- Delete -----------
   const handleDelete = async (req: PinRequest) => {
     if (req.status !== "pending") return
     if (!window.confirm("Delete request? This cannot be undone.")) return
     try {
       const res = await fetch(buildDeleteUrl(req.id), { method: "DELETE" })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setRequests((prev) => prev.filter((r) => r.id !== req.id))
+      const result = await res.json().catch(() => ({}))
+
+      if (!res.ok) throw new Error(result.detail || `HTTP ${res.status}`)
+
+      if (result === true) {
+        // ✅ Success — remove from list silently
+        setRequests((prev) => prev.filter((r) => r.id !== req.id))
+      } else if (typeof result === "string") {
+        // ⚠️ Show backend error message
+        alert(result)
+      }
     } catch (e: any) {
       alert(e?.message || "Failed to delete request")
     }
   }
+
 
   // ----------- Viewer -----------
   const openViewer = (r: PinRequest) => {
@@ -168,6 +218,7 @@ export default function PINDashboard() {
     setEditOpen(true)
   }
 
+  // Save edits
   const handleSave = async () => {
     if (!editTarget) return
     const body = {
@@ -179,6 +230,7 @@ export default function PINDashboard() {
       setSaveError("Title is required.")
       return
     }
+
     setSaving(true)
     try {
       const res = await fetch(buildUpdateUrl(editTarget.id), {
@@ -186,33 +238,25 @@ export default function PINDashboard() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const updated = (await res.json()) as PinRequest
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === updated.id
-            ? {
-                ...r,
-                ...updated,
-                category_name:
-                  categories.find((c) => c.id === editCategoryId)?.name || "Misc",
-              }
-            : r
-        )
-      )
-      setEditOpen(false)
-      setEditTarget(null)
+
+      const result = await res.json().catch(() => ({}))
+
+      if (!res.ok) throw new Error(result.detail || `HTTP ${res.status}`)
+
+      if (result === true) {
+        // ✅ Success — refresh list and close modal
+        await fetchRequests(pinId!, "")
+        setEditOpen(false)
+        setEditTarget(null)
+      } else if (typeof result === "string") {
+        // ⚠️ Show backend validation / logic error
+        setSaveError(result)
+      }
     } catch (e: any) {
       setSaveError(e?.message || "Failed to save changes")
     } finally {
       setSaving(false)
     }
-  }
-
-  // ----------- Search -----------
-  const handleSearch = async () => {
-    if (!pinId) return
-    await fetchRequests(pinId, query)
   }
 
   // ----------- Lifecycle -----------
@@ -237,7 +281,6 @@ export default function PINDashboard() {
     })
   }, [filtered])
 
-  // ----------- Totals -----------
   const totals = useMemo(() => {
     let pending = 0, assigned = 0, completed = 0
     for (const r of requests) {
@@ -324,10 +367,17 @@ export default function PINDashboard() {
                 <CardTitle>Search requests</CardTitle>
                 <CardDescription>Title or description</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center">
+              <CardContent className="flex items-center gap-3">
                 <Button onClick={() => setSearchOpen(true)}>
                   <SearchIcon className="h-4 w-4 mr-2" />
                   Search
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={loading}
+                >
+                  Reset
                 </Button>
               </CardContent>
             </Card>
@@ -383,7 +433,7 @@ export default function PINDashboard() {
               ))}
           </div>
 
-          {/* --- View Dialog --- */}
+                    {/* --- View Dialog --- */}
           <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>

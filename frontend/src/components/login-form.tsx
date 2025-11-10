@@ -17,6 +17,7 @@ type LoggedInUser = {
   email_address: string
   status: string
   last_login?: string | null
+  pin_user_id?: number | null
 }
 
 export function LoginForm({
@@ -85,7 +86,7 @@ export function LoginForm({
           navigate(`/csr/dashboard/user?id=${user.id}`)
           break
         case "PIN":
-          navigate(`/pin/dashboard/user?id=${user.id}`)
+          navigate(`/pin/dashboard/user?id=${user.pin_user_id}`)
           break
         default:
           navigate("/")

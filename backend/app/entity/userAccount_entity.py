@@ -1,4 +1,4 @@
-from app.models.models import UserAccount, UserProfile
+from app.models.models import UserAccount, UserProfile, PIN
 from app.database import get_db_session
 
 class UserAccountEntity:
@@ -20,6 +20,13 @@ class UserAccountEntity:
                         "status": role.status,
                     }
             
+            # Fetch PIN data if role is PIN
+            pin_data = None
+            if role_data and role_data["name"].upper() == "PIN":
+                pin = db.query(PIN).filter(PIN.id == user.id).first()
+                if pin:
+                    pin_data = {"pin_user_id": pin.pin_user_id}
+                    
             return {
                 "id": user.id,
                 "username": user.username,
@@ -27,6 +34,7 @@ class UserAccountEntity:
                 "status": user.status,
                 "last_login": str(user.last_login) if user.last_login else None,
                 "role": role_data["name"] if role_data else None,
+                "pin_user_id": pin_data["pin_user_id"] if pin_data else None,
             } # Return user data as dict
         
     def get_all_users(self):

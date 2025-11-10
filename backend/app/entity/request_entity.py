@@ -1,7 +1,7 @@
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, select, insert, delete, func, case, extract
 from app.database import get_db_session
-from app.models.models import Request, request_shortlists, CSR
+from app.models.models import Request, request_shortlists, CSR, Category
 from typing import Optional
 from sqlalchemy.exc import SQLAlchemyError
 import random
@@ -9,7 +9,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone, date
 
 class PinRequestEntity:
-    def get_pin_requests(self, id: int, q: Optional[str] = None):
+    def get_pin_requests(self, id: int, filter: str):
         with get_db_session() as db:
             query = (
                 db.query(Request)
@@ -21,7 +21,7 @@ class PinRequestEntity:
             )
 
             # Apply search if q provided
-            if q:
+            if filter:
                 query = query.filter(
                     or_(
                         Request.title.ilike(f"%{q}%"),
@@ -47,23 +47,141 @@ class PinRequestEntity:
                     "shortlistees_count": len(r.shortlistees or []),
                     "shortlistees": [
                         {
-                            "user_id": csr.user_id,
-                            "username": csr.username,
+                            "user_id": csr.csr_user_id,
+                            "id": csr.id,
                             "company": csr.company
                         }
                         for csr in r.shortlistees
                     ]
-                })
-            return result
-        
-    def create_pin_request(self, request_data):
+                }) # Build result list
+            return result # Return the list of PIN requests objects if success, and an empty list on failure
+    
+    def search_pin_requests(self, search_input: str, pin_user_id: int):
+        with get_db_session() as db:
+            try:
+                # Base query with eager loads
+                q = (
+                    db.query(Request)
+                    .options(
+                        joinedload(Request.category),
+                        joinedload(Request.shortlistees),
+                    )
+                    .filter(Request.pin_user_id == pin_user_id)
+                )
+
+                # Apply search if provided
+                if search_input:
+                    search_pattern = f"%{search_input}%"
+                    q = q.filter(
+                        or_(
+                            Request.title.ilike(search_pattern),
+                            Request.description.ilike(search_pattern),
+                        )
+                    )
+
+                # Sort & fetch
+                rows = q.order_by(Request.created_at.desc()).all()
+
+                # Build output
+                result = []
+                for r in rows:
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "view": r.view,
+                        "shortlistees_count": len(r.shortlistees or []),
+                        "shortlistees": [
+                            {
+                                "csr_user_id": csr.csr_user_id,
+                                "id": csr.id,
+                                "company": csr.company,
+                            }
+                            for csr in r.shortlistees
+                        ],
+                    })
+
+                return result  # Return the list of search results
+
+            except Exception as e:
+                print(f"Error searching requests: {e}")
+                return []  # empty list on failure
+
+    
+    def delete_pin_request(self, request_id: int):
+        with get_db_session() as db:
+            try:
+                # Fetch the request
+                req = db.query(Request).filter(Request.id == request_id).first()
+                if not req:
+                    return "Request not found" # Return str if request does not exist
+
+                # Optional: Prevent deletion if already assigned or completed
+                if req.status != "pending":
+                    return f"Cannot delete a '{req.status}' request" # Return str on failure
+
+                # Delete the request
+                db.delete(req) # Mark for deletion
+                db.commit() # Commit the changes
+                return True  # Successful deletion
+            except Exception as e:
+                db.rollback()
+                print(f"Error deleting request ID {request_id}: {e}")
+                return f"Failed to delete request: {str(e)}" # Return str on failure
+
+    def update_pin_request(self, request_id: int, request_data: dict):
+        with get_db_session() as db:
+            try:
+                # Fetch the request
+                req = db.query(Request).filter(Request.id == request_id).first()
+                if not req:
+                    return "Request not found"
+
+                # Prevent editing completed or assigned requests
+                if req.status.lower() != "pending":
+                    return f"Cannot update a '{req.status}' request"
+
+                # Extract and validate fields
+                title = request_data.get("title")
+                description = request_data.get("description")
+                category_id = request_data.get("category_id")
+
+                # Optional: Validate title
+                if not title or not title.strip():
+                    return "Title cannot be empty" # Return str on failure
+
+                # If category provided, validate it exists
+                if category_id:
+                    category = db.query(Category).filter(Category.id == category_id).first()
+                    if not category:
+                        return f"Category with ID {category_id} does not exist" # Return str on failure
+
+                # Apply updates
+                req.title = title.strip()
+                req.description = description.strip() if description else None
+                req.category_id = category_id if category_id else None
+
+                db.commit() # Commit the changes
+                db.refresh(req) # Refresh the instance, reflect latest changes
+                return True  # Successful update
+            except Exception as e:
+                db.rollback()
+                print(f"Error updating request ID {request_id}: {e}")
+                return f"Failed to update request: {str(e)}" # Return str on failure
+            
+    def create_pin_request(self, form_data: dict):
         with get_db_session() as db:
             try:
                 new_request = Request(
-                    pin_user_id=request_data.pin_user_id,
-                    title=request_data.title,
-                    description=request_data.description,
-                    category_id=request_data.category_id,
+                    pin_user_id=form_data["pin_user_id"],
+                    title=form_data["title"],
+                    description=form_data.get("description"),
+                    category_id=form_data.get("category_id"),
                     status="pending",
                 ) # Create new Request instance
 

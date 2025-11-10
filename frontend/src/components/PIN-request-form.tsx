@@ -17,6 +17,7 @@ type CurrentUser = {
   email_address: string
   status: string
   last_login?: string | null
+  pin_user_id?: number | null
 }
 
 type Category = {
@@ -36,7 +37,7 @@ export default function RequestForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // Resolve PIN id
+  // 🟩 Load user from localStorage (with pin_user_id)
   const [currentUser] = useState<CurrentUser | null>(() => {
     try {
       const raw = localStorage.getItem("user")
@@ -45,19 +46,22 @@ export default function RequestForm() {
       return null
     }
   })
+
   const paramId = searchParams.get("id")
+
+  // 🟩 Use pin_user_id from backend response if available
   const resolvedPinId = useMemo(() => {
-    if (currentUser?.id) return currentUser.id
+    if (currentUser?.pin_user_id) return currentUser.pin_user_id
     if (paramId && !Number.isNaN(Number(paramId))) return Number(paramId)
     return null
-  }, [currentUser?.id, paramId])
+  }, [currentUser?.pin_user_id, paramId])
 
   // 🟩 Categories
   const [categories, setCategories] = useState<Category[]>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 🟩 Form
+  // 🟩 Form state
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<FormState>({
     pin_user_id: resolvedPinId,
@@ -67,7 +71,7 @@ export default function RequestForm() {
     status: "pending",
   })
 
-  // Keep pin_user_id synced
+  // Keep pin_user_id synced if user changes
   useEffect(() => {
     if (resolvedPinId && form.pin_user_id !== resolvedPinId) {
       setForm((p) => ({ ...p, pin_user_id: resolvedPinId }))
@@ -93,17 +97,16 @@ export default function RequestForm() {
     fetchCategories()
   }, [])
 
-  // Utility to update form state
   function update<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((p) => ({ ...p, [k]: v }))
   }
 
-  // 🟩 Submit handler (updated)
+  // 🟩 Submit request to backend
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (!form.pin_user_id) {
-      alert("Missing PIN user id. Please sign in as a PIN user or add ?id=<pin_user_id> to the URL.")
+      alert("Missing PIN user ID. Please sign in as a PIN user.")
       return
     }
     if (!form.title.trim()) return alert("Title is required")
@@ -112,7 +115,7 @@ export default function RequestForm() {
       pin_user_id: form.pin_user_id,
       title: form.title.trim(),
       description: form.description.trim() || null,
-      category_id: form.category_id, // can be null
+      category_id: form.category_id,
       status: "pending" as const,
     }
 
@@ -125,25 +128,25 @@ export default function RequestForm() {
       })
 
       const text = await res.text()
-
-      // Backend returns `true` (success) or a string (error)
       let parsed: any
       try {
         parsed = JSON.parse(text)
       } catch {
-        parsed = text // if plain text
+        parsed = text
       }
 
+      // 🟩 Follow backend rules exactly:
+      // true → redirect only
+      // string → show as error
       if (res.ok && parsed === true) {
-        alert("✅ Request created successfully!")
-        navigate(`/pin/dashboard/user?id=${encodeURIComponent(String(form.pin_user_id))}`)
+        navigate(`/pin/dashboard/user?pin_user_id=${encodeURIComponent(String(form.pin_user_id))}`)
       } else {
         const message = typeof parsed === "string" ? parsed : "Failed to create request"
-        alert(`❌ ${message}`)
+        alert(message)
       }
     } catch (err) {
       console.error(err)
-      alert("❌ Failed to create request. Check console for details.")
+      alert("Failed to create request. Check console for details.")
     } finally {
       setSubmitting(false)
     }
@@ -162,7 +165,7 @@ export default function RequestForm() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 🟩 PIN User ID */}
+            {/* PIN User ID */}
             <div className="grid gap-2">
               <Label htmlFor="pin_user_id">PIN User ID</Label>
               <Input
@@ -173,12 +176,12 @@ export default function RequestForm() {
               />
               {!form.pin_user_id && (
                 <p className="text-xs text-red-600">
-                  Unable to determine PIN id. Sign in as a PIN user or provide <code>?id=</code> in the URL.
+                  Unable to determine PIN id. Please sign in as a PIN user.
                 </p>
               )}
             </div>
 
-            {/* 🟩 Title */}
+            {/* Title */}
             <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -190,7 +193,7 @@ export default function RequestForm() {
               />
             </div>
 
-            {/* 🟩 Description */}
+            {/* Description */}
             <div className="grid gap-2">
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea
@@ -202,7 +205,7 @@ export default function RequestForm() {
               />
             </div>
 
-            {/* 🟩 Category */}
+            {/* Category */}
             <div className="grid gap-2">
               <Label htmlFor="category_id">Category (optional)</Label>
               <select
@@ -228,7 +231,7 @@ export default function RequestForm() {
               {error && <p className="text-xs text-red-600">{error}</p>}
             </div>
 
-            {/* 🟩 Status */}
+            {/* Status */}
             <div className="grid gap-2">
               <Label>Status</Label>
               <Input value="pending" readOnly />
