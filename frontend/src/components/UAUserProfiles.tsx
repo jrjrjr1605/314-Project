@@ -46,7 +46,6 @@ export default function UAUserProfiles() {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/user_profiles`)
-      if (!res.ok) throw new Error("Failed to fetch user profiles")
       const data = await res.json()
       setProfiles(data)
     } catch (err) {
@@ -61,86 +60,63 @@ export default function UAUserProfiles() {
     fetchProfiles()
   }, [])
 
-    // --- Manual search function ---
-    async function handleSearch() {
-    if (!searchInput.trim()) {
-        // If the search bar is empty, reload all profiles
-        return fetchProfiles()
-    }
-
-    setLoading(true)
+  // --- Search ---
+  async function handleSearch() {
+    if (!searchInput.trim()) return fetchProfiles()
+    setSearching(true)
     try {
-        const res = await fetch(
+      const res = await fetch(
         `${API_BASE}/api/user_profiles/search?search_input=${encodeURIComponent(searchInput)}`
-        )
-
-        if (res.status === 404) {
-        // No profiles found
-        alert(`⚠️ No profiles found matching "${searchInput}".`)
-        setProfiles([]) // clear the table
-        return
-        }
-
-        if (!res.ok) throw new Error("Failed to search profiles")
-
-        const data = await res.json()
-        setProfiles(data)
+      )
+      const data = await res.json()
+      setProfiles(data)
+      if (!data.length) alert(`⚠️ No profiles found matching "${searchInput}".`)
     } catch (err) {
-        console.error(err)
-        alert("❌ Search failed. Please try again.")
+      console.error(err)
+      alert("❌ Search failed. Please try again.")
     } finally {
-        setLoading(false)
+      setSearching(false)
     }
-    }
+  }
 
-    // --- Create new profile ---
-    async function handleCreateProfile(e: React.FormEvent) {
+  // --- Create profile ---
+  async function handleCreateProfile(e: React.FormEvent) {
     e.preventDefault()
     setActionLoading(true)
     try {
-        const res = await fetch(`${API_BASE}/api/user_profiles`, {
+      const res = await fetch(`${API_BASE}/api/user_profiles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProfile),
-        })
+      })
 
-        // Try to parse JSON, fallback to text if not valid JSON
-        const contentType = res.headers.get("content-type")
-        let result: any
-
-        if (contentType && contentType.includes("application/json")) {
+      let result: any
+      const contentType = res.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
         result = await res.json()
-        } else {
+      } else {
         result = await res.text()
-        }
+      }
 
-        // 🔍 Handle result depending on what backend sent
-        if (typeof result === "string") {
-        // Backend returned a raw string (custom error message)
-        alert(`❌ ${result}`)
-        return
-        }
-
-        if (!res.ok) {
-        // If backend raised HTTPException or similar
-        throw new Error(result.detail || "Failed to create profile")
-        }
-
-        // ✅ Success (True or JSON success message)
-        alert("✅ User profile created successfully!")
+      // ✅ Handle backend logic
+      if (result === true) {
         setNewProfile({ name: "" })
         setOpenDialog(false)
         fetchProfiles()
+      } else if (typeof result === "string") {
+        alert(result)
+      } else {
+        alert("❌ Unexpected response.")
+      }
     } catch (err: any) {
-        console.error(err)
-        alert(`❌ ${err.message}`)
+      console.error(err)
+      alert(`❌ ${err.message}`)
     } finally {
-        setActionLoading(false)
+      setActionLoading(false)
     }
-    }
+  }
 
-
-  // --- Update profile name ---
+  // --- Update profile ---
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedProfile) return
@@ -151,13 +127,23 @@ export default function UAUserProfiles() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: selectedProfile.name }),
       })
-      const result = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(result.detail || "Failed to update profile")
+      let result: any
+      const contentType = res.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await res.json()
+      } else {
+        result = await res.text()
+      }
 
-      alert(`✅ Profile renamed to "${selectedProfile.name}" successfully!`)
-      setEditDialog(false)
-      setSelectedProfile(null)
-      fetchProfiles()
+      if (result === true) {
+        setEditDialog(false)
+        setSelectedProfile(null)
+        fetchProfiles()
+      } else if (typeof result === "string") {
+        alert(result)
+      } else {
+        alert("❌ Unexpected response.")
+      }
     } catch (err: any) {
       console.error(err)
       alert(`❌ ${err.message}`)
@@ -166,19 +152,29 @@ export default function UAUserProfiles() {
     }
   }
 
-  // --- Suspend / Reactivate handlers ---
+  // --- Suspend profile ---
   async function handleSuspend(profile: UserProfile) {
-    if (!confirm(`⚠️ Are you sure you want to suspend "${profile.name}"?`)) return
+    if (!confirm(`⚠️ Suspend "${profile.name}"?`)) return
     setActionLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/user_profiles/suspend/${profile.id}`, {
         method: "PUT",
       })
-      const result = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(result.detail || "Failed to suspend profile")
+      let result: any
+      const contentType = res.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await res.json()
+      } else {
+        result = await res.text()
+      }
 
-      alert(`🟠 "${profile.name}" has been suspended.`)
-      fetchProfiles()
+      if (result === true) {
+        fetchProfiles()
+      } else if (typeof result === "string") {
+        alert(result)
+      } else {
+        alert("❌ Unexpected response.")
+      }
     } catch (err: any) {
       console.error(err)
       alert(`❌ ${err.message}`)
@@ -187,17 +183,28 @@ export default function UAUserProfiles() {
     }
   }
 
+  // --- Reactivate profile ---
   async function handleReactivate(profile: UserProfile) {
     setActionLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/user_profiles/reactivate/${profile.id}`, {
         method: "PUT",
       })
-      const result = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(result.detail || "Failed to reactivate profile")
+      let result: any
+      const contentType = res.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await res.json()
+      } else {
+        result = await res.text()
+      }
 
-      alert(`✅ "${profile.name}" has been reactivated.`)
-      fetchProfiles()
+      if (result === true) {
+        fetchProfiles()
+      } else if (typeof result === "string") {
+        alert(result)
+      } else {
+        alert("❌ Unexpected response.")
+      }
     } catch (err: any) {
       console.error(err)
       alert(`❌ ${err.message}`)
@@ -210,9 +217,7 @@ export default function UAUserProfiles() {
     <SidebarProvider>
       <div className="flex min-h-screen">
         <AppSidebar />
-
         <main className="flex-1 p-8 space-y-6">
-          {/* --- Header Controls --- */}
           <div className="flex flex-wrap justify-between items-center gap-4">
             <h1 className="text-2xl font-bold">User Profiles</h1>
 
@@ -223,10 +228,7 @@ export default function UAUserProfiles() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="w-[250px]"
               />
-              <Button
-                onClick={handleSearch}
-                disabled={searching || loading}
-              >
+              <Button onClick={handleSearch} disabled={searching || loading}>
                 {searching ? "Searching..." : "Search"}
               </Button>
               <Button
@@ -256,7 +258,6 @@ export default function UAUserProfiles() {
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
                 {loading ? (
                   <TableRow>
