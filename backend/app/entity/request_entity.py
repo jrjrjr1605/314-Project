@@ -1,5 +1,5 @@
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_, select, insert, delete, func, case, extract
+from sqlalchemy import or_, select, insert, delete, func, case, extract, exists, not_
 from app.database import get_db_session
 from app.models.models import Request, request_shortlists, CSR, Category
 from typing import Optional
@@ -196,36 +196,44 @@ class PinRequestEntity:
                 print(f"Error creating request: {e}") # Log the error in terminal
                 return f"Failed to create request: {str(e)}" # Return str on failure
             
-    def get_csr_requests(self, status: Optional[str] = "pending", csr_id: Optional[int] = None):
+    def get_csr_requests_available(self, csr_user_id: int = None):
         try:
             with get_db_session() as db:
-                query = db.query(Request).options(joinedload(Request.category))
+                # Query only pending requests
+                query = (
+                    db.query(Request)
+                    .options(joinedload(Request.category))
+                    .filter(func.lower(Request.status) == "pending")
+                    .order_by(Request.created_at.desc())
+                )
 
-                # Shortlist filter
-                if status == "shortlisted" and csr_id:
-                    query = query.join(
-                        request_shortlists,
-                        Request.id == request_shortlists.c.request_id
-                    ).filter(request_shortlists.c.csr_user_id == csr_id)
-                elif status in ("pending", "assigned", "completed"):
-                    query = query.filter(Request.status == status)
-
-                query = query.order_by(Request.created_at.desc())
                 rows = query.all()
-
                 result = []
-                for r in rows:
-                    # Compute shortlist info safely
-                    my_shortlisted = False
-                    if csr_id:
-                        my_shortlisted = db.query(request_shortlists).filter(
-                            request_shortlists.c.csr_user_id == csr_id,
-                            request_shortlists.c.request_id == r.id
-                        ).first() is not None # Check if CSR has shortlisted this request
 
-                    shortlistees_count = db.query(request_shortlists).filter(
-                        request_shortlists.c.request_id == r.id
-                    ).count() # Count of shortlistees
+                for r in rows:
+                    # Check if this CSR has already shortlisted this request
+                    is_shortlisted = False
+                    if csr_user_id:
+                        is_shortlisted = (
+                            db.query(request_shortlists)
+                            .filter(
+                                request_shortlists.c.csr_user_id == csr_user_id,
+                                request_shortlists.c.request_id == r.id,
+                            )
+                            .first()
+                            is not None
+                        )
+
+                    # Skip if already shortlisted
+                    if is_shortlisted:
+                        continue
+
+                    # Count total shortlistees
+                    shortlistees_count = (
+                        db.query(request_shortlists)
+                        .filter(request_shortlists.c.request_id == r.id)
+                        .count()
+                    )
 
                     result.append({
                         "id": r.id,
@@ -238,17 +246,172 @@ class PinRequestEntity:
                         "created_at": r.created_at,
                         "updated_at": r.updated_at,
                         "completed_at": r.completed_at,
-                        "my_shortlisted": my_shortlisted,
+                        "my_shortlisted": False,
                         "shortlistees_count": shortlistees_count,
-                    })
-
-                return result # Return the list of CSR requests objects if success
+                    }) # Build result list
+                return result # Return list of available requests
 
         except Exception as e:
-            print(f"❌ Error fetching CSR requests: {e}")
-            return {} # Return empty list on failure
+            print(f"[ERROR] get_csr_requests_available failed: {e}")
+            return [] # Return empty list on failure
+
+    def get_csr_requests_shortlisted(self, csr_user_id: int = None):
+        try:
+            with get_db_session() as db:
+                if not csr_user_id:
+                    print("[WARN] Missing csr_user_id")
+                    return []
+
+                query = (
+                    db.query(Request)
+                    .join(request_shortlists, Request.id == request_shortlists.c.request_id)
+                    .options(joinedload(Request.category))
+                    .filter(
+                        func.lower(Request.status) == "pending",
+                        request_shortlists.c.csr_user_id == csr_user_id,
+                    )
+                    .order_by(Request.created_at.desc())
+                )
+
+                rows = query.all()
+                result = []
+
+                for r in rows:
+                    shortlistees_count = (
+                        db.query(request_shortlists)
+                        .filter(request_shortlists.c.request_id == r.id)
+                        .count()
+                    )
+
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "assigned_to": r.assigned_to,
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "completed_at": r.completed_at,
+                        "my_shortlisted": True,
+                        "shortlistees_count": shortlistees_count,
+                    }) # Build result list
+                return result # Return list of shortlisted requests
+
+        except Exception as e:
+            print(f"[ERROR] get_csr_requests_shortlisted failed: {e}")
+            return [] # Return empty list on failure
+
+    def search_csr_requests_available(self, search_input: str, csr_id: int):
+        try:
+            with get_db_session() as db:
+                # Base query for available requests
+                query = (
+                    db.query(Request)
+                    .options(joinedload(Request.category))
+                    .filter(
+                        Request.status == "pending",  # only pending requests
+                        not_(
+                            exists().where(
+                                (request_shortlists.c.request_id == Request.id)
+                                & (request_shortlists.c.csr_user_id == csr_id)
+                            )
+                        ),  # exclude requests already shortlisted by this CSR
+                        or_(
+                            Request.title.ilike(f"%{search_input}%"),
+                            Request.description.ilike(f"%{search_input}%"),
+                        ),
+                    )
+                    .order_by(Request.created_at.desc())
+                )
+
+                rows = query.all()
+                result = []
+
+                for r in rows:
+                    shortlistees_count = (
+                        db.query(func.count())
+                        .select_from(request_shortlists)
+                        .filter(request_shortlists.c.request_id == r.id)
+                        .scalar()
+                    ) # Count of shortlistees
+
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "assigned_to": r.assigned_to,
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "completed_at": r.completed_at,
+                        "my_shortlisted": False,  # these are all NOT shortlisted
+                        "shortlistees_count": shortlistees_count or 0,
+                    }) # Build result list
+
+                return result # Return list of search results
+
+        except Exception as e:
+            print(f"Error searching CSR available requests: {e}")
+            return [] # empty list on failure
+
+    def search_csr_requests_shortlisted(self, search_input: str, csr_id: int):
+        try:
+            with get_db_session() as db:
+                # Base query for shortlisted requests
+                query = (
+                    db.query(Request)
+                    .options(joinedload(Request.category))
+                    .filter(
+                        Request.status == "pending",  # only pending requests
+                        exists().where(
+                            (request_shortlists.c.request_id == Request.id)
+                            & (request_shortlists.c.csr_user_id == csr_id)
+                        ),  # only requests shortlisted by this CSR
+                        or_(
+                            Request.title.ilike(f"%{search_input}%"),
+                            Request.description.ilike(f"%{search_input}%"),
+                        ),
+                    )
+                    .order_by(Request.created_at.desc())
+                )
+
+                rows = query.all()
+                result = []
+
+                for r in rows:
+                    shortlistees_count = (
+                        db.query(func.count())
+                        .select_from(request_shortlists)
+                        .filter(request_shortlists.c.request_id == r.id)
+                        .scalar()
+                    ) # Count of shortlistees
+
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "assigned_to": r.assigned_to,
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "completed_at": r.completed_at,
+                        "my_shortlisted": True,  # these are all shortlisted
+                        "shortlistees_count": shortlistees_count or 0,
+                    }) # Build result list
+
+                return result # Return list of search results
+
+        except Exception as e:
+            print(f"Error searching CSR shortlisted requests: {e}")
+            return [] # empty list on failure
         
-    def search_csr_requests(self, q: str, csr_id: int):
+    def search_csr_requests_shortlisted(self, search_input: str, csr_id: int):
         try:
             with get_db_session() as db:
                 query = (
@@ -256,11 +419,12 @@ class PinRequestEntity:
                     .options(joinedload(Request.category))
                     .filter(
                         or_(
-                            Request.title.ilike(f"%{q}%"),
-                            Request.description.ilike(f"%{q}%"),
+                            Request.title.ilike(f"%{search_input}%"),
+                            Request.description.ilike(f"%{search_input}%"),
                         )
                     )
                     .order_by(Request.created_at.desc())
+                    .filter(Request.status == "pending")
                 )
 
                 rows = query.all()
@@ -386,7 +550,99 @@ class PinRequestEntity:
         except Exception as e:
             print(f"Error incrementing request view: {e}")
             return f"Failed to increment view: {str(e)}"
-        
+
+    def get_csr_requests_completed(self):
+        try:
+            with get_db_session() as db:
+                rows = (
+                    db.query(Request)
+                    .options(joinedload(Request.category))
+                    .filter(func.lower(Request.status) == "completed")
+                    .order_by(Request.completed_at.desc())
+                    .all()
+                )
+
+                result = []
+                for r in rows:
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "service_type": r.category.name if r.category else "Misc",
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "completed_at": r.completed_at,
+                    }) # Build result list
+
+                return result # Return list of completed requests
+
+        except Exception as e:
+            print(f"[ERROR] get_csr_completed_requests failed: {e}")
+            return [] # Return empty list on failure
+    
+    def search_csr_requests_completed(self, filters: dict):
+        try:
+            search_input = (filters.get("search_input") or "").strip()
+            service_type = (filters.get("service_type") or "").strip()
+            completed_after = filters.get("completed_after")
+            completed_before = filters.get("completed_before")
+
+            with get_db_session() as db:
+                # Base query: completed requests
+                query = (
+                    db.query(Request)
+                    .options(joinedload(Request.category))
+                    .filter(Request.status == "completed")
+                )
+
+                # Keyword filter (title/description)
+                if search_input:
+                    pattern = f"%{search_input}%"
+                    query = query.filter(
+                        or_(
+                            Request.title.ilike(pattern),
+                            Request.description.ilike(pattern)
+                        )
+                    )
+
+                # Category / Service Type filter
+                if service_type and service_type.lower() != "all":
+                    query = query.join(Category).filter(
+                        func.lower(Category.name) == service_type.lower()
+                    )
+
+                # Date range filters
+                if completed_after:
+                    query = query.filter(Request.completed_at >= completed_after)
+                if completed_before:
+                    query = query.filter(Request.completed_at <= completed_before)
+
+                query = query.order_by(Request.completed_at.desc())
+                rows = query.all()
+
+                result = []
+                for r in rows:
+                    result.append({
+                        "id": r.id,
+                        "pin_user_id": r.pin_user_id,
+                        "title": r.title,
+                        "description": r.description,
+                        "status": r.status,
+                        "category_name": r.category.name if r.category else "Misc",
+                        "service_type": r.category.name if r.category else "Misc",
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                        "completed_at": r.completed_at,
+                    }) # Build result list
+                return result # Return list of completed requests
+
+        except Exception as e:
+            print(f"Error searching completed CSR requests: {e}")
+            return [] # Return empty list on failure
+
     def get_all_requests(self):
         try:
             with get_db_session() as db:

@@ -1,4 +1,4 @@
-from app.models.models import UserAccount, UserProfile, PIN
+from app.models.models import UserAccount, UserProfile, PIN, CSR
 from app.database import get_db_session
 
 class UserAccountEntity:
@@ -26,7 +26,14 @@ class UserAccountEntity:
                 pin = db.query(PIN).filter(PIN.id == user.id).first()
                 if pin:
                     pin_data = {"pin_user_id": pin.pin_user_id}
-                    
+            
+            # Fetch CSR data if role is CSR
+            csr_data = None
+            if role_data and role_data["name"].upper() == "CSR":
+                pin = db.query(CSR).filter(CSR.id == user.id).first()
+                if pin:
+                    csr_data = {"csr_user_id": pin.csr_user_id}
+
             return {
                 "id": user.id,
                 "username": user.username,
@@ -35,6 +42,7 @@ class UserAccountEntity:
                 "last_login": str(user.last_login) if user.last_login else None,
                 "role": role_data["name"] if role_data else None,
                 "pin_user_id": pin_data["pin_user_id"] if pin_data else None,
+                "csr_user_id": csr_data["csr_user_id"] if csr_data else None,
             } # Return user data as dict
         
     def get_all_users(self):

@@ -1,21 +1,34 @@
 from app.entity.request_entity import PinRequestEntity
 from typing import Optional
 
-class getCSRRequestController:
-
-    def get_csr_requests(self, status: Optional[str], csr_id: int):
-
-        entity = PinRequestEntity() # Create an instance of PinRequestEntity
-
-        return entity.get_csr_requests(status, csr_id) # Call the get_csr_requests method of the entity and return the list of CSR requests
-
-class searchCSRRequestsController:
-    def search_csr_requests(self, q, csr_id: int):
+class getCSRRequestAvailableController:
+    def get_csr_requests_available(self, csr_user_id: int):
 
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
-        return entity.search_csr_requests(q, csr_id) # Call the search_csr_requests method of the entity and return the list of CSR requests
+        return entity.get_csr_requests_available(csr_user_id) # Call the get_csr_requests_available method of the entity and return the list of CSR requests
+
+class getCSRRequestShortlistedController:
+    def get_csr_requests_shortlisted(self, csr_user_id: int):
+
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.get_csr_requests_shortlisted(csr_user_id) # Call the get_csr_requests_shortlisted method of the entity and return the list of CSR requests
+
+class searchCSRRequestAvailableController:
+    def search_csr_requests_available(self, search_input, csr_user_id: int):
+
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.search_csr_requests_available(search_input, csr_user_id) # Call the search_csr_requests_available method of the entity and return the list of CSR requests
     
+class searchCSRRequestShortlistedController:
+    def search_csr_requests_shortlisted(self, search_input, csr_user_id: int):
+
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.search_csr_requests_shortlisted(search_input, csr_user_id) # Call the search_csr_requests_shortlisted method of the entity and return the list of CSR requests
+
 class shortlistCSRRequestController:
     def shortlist_csr_requests(self, request_id: int, request_info: dict):
 
@@ -34,3 +47,15 @@ class incrementRequestViewController:
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.increment_request_view(request_id) # Call the increment_request_view method of the entity and return the result
+    
+class getCSRRequestCompletedController:
+    def get_csr_requests_completed(self):
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.get_csr_requests_completed() # Call the get_csr_request_completed method of the entity and return the list of completed CSR requests
+    
+class searchCSRRequestCompletedController:
+    def search_csr_requests_completed(self, filter: dict):
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.search_csr_requests_completed(filter) # Call the search_csr_requests_completed method of the entity and return the list of completed CSR requests

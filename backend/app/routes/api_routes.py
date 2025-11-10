@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, Body
 from app.controllers.login_controller import LoginController
 from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController, searchUserController, getUserProfilesController, createUserProfilesController, updateUserProfilesController, suspendUserProfilesController, reactivateUserProfilesController, searchUserProfilesController
 from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController
-from app.controllers.csr_controller import getCSRRequestController, searchCSRRequestsController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController
+from app.controllers.csr_controller import getCSRRequestAvailableController, searchCSRRequestAvailableController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController, searchCSRRequestShortlistedController, getCSRRequestShortlistedController, getCSRRequestCompletedController, searchCSRRequestCompletedController
 from app.controllers.pm_controller import createCategoryController, updateCategoryController, deleteCategoryController, getCategoryController, searchCategoryController, generateWeeklyReportController, generateDailyReportController, generateMonthlyReportController
 from app.controllers.assignment_controller import getAllRequestsController, updateRequestController, viewRequestController
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 router = APIRouter(prefix="/api", tags=["API"])
 
@@ -161,20 +161,39 @@ def update_pin_request(request_id: int, request_data: dict):
 
 # ------------------ CSR ------------------
 
-@router.get("/requests")
-def get_csr_requests(status: str = "pending", csr_id: int = None):
-    controller = getCSRRequestController()
-    result = controller.get_csr_requests(status, csr_id)
+# View available requests
+@router.get("/requests/available")
+def get_csr_requests_available(csr_user_id: int = None):
+    controller = getCSRRequestAvailableController()
+    result = controller.get_csr_requests_available(csr_user_id)
 
     return result # Return the list of CSR requests objects if success and empty list on failure
 
-@router.get("/requests/search")
-def search_csr_requests(q: str, csr_id: int = None):
-    controller = searchCSRRequestsController()
-    result = controller.search_csr_requests(q, csr_id)
+# View shortlisted requests
+@router.get("/requests/shortlisted")
+def get_csr_requests_shortlisted(csr_user_id: int = None):
+    controller = getCSRRequestShortlistedController()
+    result = controller.get_csr_requests_shortlisted(csr_user_id)
 
     return result # Return the list of CSR requests objects if success and empty list on failure
 
+# Search for available requests
+@router.get("/requests/search/available")
+def search_csr_requests_available(search_input: str, csr_user_id: int = None):
+    controller = searchCSRRequestAvailableController()
+    result = controller.search_csr_requests_available(search_input, csr_user_id)
+
+    return result # Return the list of CSR requests objects if success and empty list on failure
+
+# Search for shortlisted requests
+@router.get("/requests/search/shortlisted")
+def search_csr_requests_shortlisted(search_input: str, csr_user_id: int = None):
+    controller = searchCSRRequestShortlistedController()
+    result = controller.search_csr_requests_shortlisted(search_input, csr_user_id)
+
+    return result # Return the list of CSR requests objects if success and empty list on failure
+
+# Shortlist/Save
 @router.post("/requests/{request_id}/shortlist")
 def add_to_shortlist(request_id: int, request_info: dict):
     controller = shortlistCSRRequestController()
@@ -182,6 +201,7 @@ def add_to_shortlist(request_id: int, request_info: dict):
 
     return result # Return True on success and str on failure
 
+# Remove shortlist/unsave
 @router.delete("/requests/{request_id}/shortlist")
 def remove_from_shortlist(request_id: int, csr_id: int):
     controller = removeShortlistCSRRequestController()
@@ -189,12 +209,28 @@ def remove_from_shortlist(request_id: int, csr_id: int):
 
     return result # Return True on success and str on failure
 
+# Increment view count
 @router.post("/requests/{request_id}/view")
 def increment_request_view(request_id: int):
     controller = incrementRequestViewController()
     result = controller.increment_request_view(request_id)
 
     return result # Return True on success and str on failure
+
+# View completed requests
+@router.get("/requests/completed")
+def get_csr_requests_completed():
+    controller = getCSRRequestCompletedController()
+    result = controller.get_csr_requests_completed()
+
+    return result # Return the list of completed CSR requests if success and empty list on failure
+
+# Search completed requests
+@router.post("/requests/search/completed")
+def search_completed_requests(filters: dict = Body(...)):
+    controller = searchCSRRequestCompletedController()
+    result = controller.search_csr_requests_completed(filters)
+    return result
 
 # ------------------ PM ------------------
 

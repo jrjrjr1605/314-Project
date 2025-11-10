@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { AppSidebar } from "@/components/csr-app-sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import {
@@ -22,7 +22,6 @@ type PinRequest = {
   updated_at?: string | null
   completed_at?: string | null
   service_type?: string | null
-  my_shortlisted?: boolean
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"
@@ -30,7 +29,10 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"
 function formatDT(dt?: string | null) {
   if (!dt) return ""
   try {
-    return new Date(dt).toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" })
+    return new Date(dt).toLocaleString("en-SG", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
   } catch {
     return dt ?? ""
   }
@@ -41,50 +43,23 @@ export default function CSRCompletedRequests() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Filters
   const [query, setQuery] = useState("")
-  const [service, setService] = useState<string>("")
+  const [service, setService] = useState<string>("all")
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
 
-  const PAGE_SIZE = 24
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-
-  // 🟩 Filter by completion date (completed_at)
-  const buildUrl = (opts: { limit: number; offset: number }) => {
-    const u = new URL(`${API_BASE}/api/requests`)
-    u.searchParams.set("limit", String(opts.limit))
-    u.searchParams.set("offset", String(opts.offset))
-    u.searchParams.set("status", "completed")
-
-    if (query.trim()) u.searchParams.set("q", query.trim())
-    if (service && service !== "all") u.searchParams.set("service_type", service)
-    if (startDate) u.searchParams.set("completed_after", startDate)
-    if (endDate) u.searchParams.set("completed_before", endDate)
-
-    return u.toString()
-  }
-
-  const fetchPage = async (reset = false) => {
+  // Fetch all completed requests (initial load)
+  const fetchAllCompletedRequests = async () => {
     setLoading(true)
     setError(null)
     try {
-      const url = buildUrl({
-        limit: PAGE_SIZE,
-        offset: reset ? 0 : offset,
+      const res = await fetch(`${API_BASE}/api/requests/completed`, {
+        headers: { Accept: "application/json" },
       })
-      const res = await fetch(url, { headers: { Accept: "application/json" } })
       if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`)
-      const data = (await res.json()) as PinRequest[] | { items: PinRequest[] }
-      const list = Array.isArray(data) ? data : (data.items ?? [])
-      if (reset) {
-        setRequests(list)
-        setOffset(list.length)
-      } else {
-        setRequests(prev => [...prev, ...list])
-        setOffset(prev => prev + list.length)
-      }
-      setHasMore(list.length === PAGE_SIZE)
+      const data = await res.json()
+      setRequests(Array.isArray(data) ? data : [])
     } catch (e: any) {
       setError(e?.message || "Failed to load completed requests")
     } finally {
@@ -92,35 +67,48 @@ export default function CSRCompletedRequests() {
     }
   }
 
+  // 🔍 Search completed requests using POST
+  const handleSearch = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const body = {
+        search_input: query.trim(),
+        service_type: service === "all" ? null : service,
+        completed_after: startDate || null,
+        completed_before: endDate || null,
+      }
+
+      const res = await fetch(`${API_BASE}/api/requests/search/completed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`)
+
+      const data = await res.json()
+      setRequests(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setError(e?.message || "Search failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Reset filters
+  const handleReset = () => {
+    setQuery("")
+    setService("all")
+    setStartDate("")
+    setEndDate("")
+    fetchAllCompletedRequests()
+  }
+
   useEffect(() => {
-    fetchPage(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // initial load
-
-  // 🟩 Auto-fetch when service type changes
-  useEffect(() => {
-    if (!loading) fetchPage(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [service])
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return requests.filter(r =>
-      !q ||
-      r.title?.toLowerCase().includes(q) ||
-      r.description?.toLowerCase().includes(q) ||
-      String(r.id).includes(q)
-    )
-  }, [requests, query])
-
-  // 🟩 Sort by completed_at instead of updated_at
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const at = a.completed_at ? new Date(a.completed_at).getTime() : 0
-      const bt = b.completed_at ? new Date(b.completed_at).getTime() : 0
-      return bt - at
-    })
-  }, [filtered])
+    fetchAllCompletedRequests()
+  }, [])
 
   return (
     <SidebarProvider>
@@ -137,7 +125,7 @@ export default function CSRCompletedRequests() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder='Try: "food", "elderly", or Service Type'
+                  placeholder='Try: "food", "elderly", or service type'
                   className="w-[260px]"
                 />
               </div>
@@ -152,14 +140,17 @@ export default function CSRCompletedRequests() {
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="Basic Needs">Basic Needs</SelectItem>
                     <SelectItem value="Medical">Medical</SelectItem>
-                    <SelectItem value="Financial & Legal Aid">Financial & Legal Aid</SelectItem>
-                    <SelectItem value="Case & Social Support">Case & Social Support</SelectItem>
+                    <SelectItem value="Financial & Legal Aid">
+                      Financial & Legal Aid
+                    </SelectItem>
+                    <SelectItem value="Case & Social Support">
+                      Case & Social Support
+                    </SelectItem>
                     <SelectItem value="Misc">Misc</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* 🟩 Filter by completion date only */}
               <div className="space-y-2">
                 <Label>Completed After</Label>
                 <Input
@@ -178,8 +169,13 @@ export default function CSRCompletedRequests() {
                 />
               </div>
 
-              <div className="pt-5">
-                <Button onClick={() => fetchPage(true)}>Search</Button>
+              <div className="pt-5 flex gap-2">
+                <Button onClick={handleSearch} disabled={loading}>
+                  {loading ? "Searching..." : "Search"}
+                </Button>
+                <Button variant="outline" onClick={handleReset} disabled={loading}>
+                  Reset
+                </Button>
               </div>
             </div>
           </div>
@@ -190,7 +186,7 @@ export default function CSRCompletedRequests() {
 
           {/* Results grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 auto-rows-fr">
-            {!loading && !error && sorted.map((r) => (
+            {!loading && !error && requests.map((r) => (
               <Card key={r.id} className="h-full flex flex-col hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
@@ -203,9 +199,12 @@ export default function CSRCompletedRequests() {
                 </CardHeader>
 
                 <CardContent className="flex flex-col gap-3 grow">
-                  {r.description && <p className="text-sm text-gray-700 line-clamp-4">{r.description}</p>}
+                  {r.description && (
+                    <p className="text-sm text-gray-700 line-clamp-4">
+                      {r.description}
+                    </p>
+                  )}
                   <div className="text-xs text-gray-500 mt-auto">
-                    {/* 🟩 Show actual completed_at date */}
                     <div>Completed: {formatDT(r.completed_at)}</div>
                   </div>
                 </CardContent>
@@ -213,16 +212,7 @@ export default function CSRCompletedRequests() {
             ))}
           </div>
 
-          {/* Pager */}
-          {!loading && hasMore && (
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => fetchPage(false)}>Load more</Button>
-            </div>
-          )}
-          {!loading && !hasMore && requests.length > 0 && (
-            <div className="text-center text-xs text-gray-500">No more results.</div>
-          )}
-          {!loading && !error && sorted.length === 0 && (
+          {!loading && !error && requests.length === 0 && (
             <div className="text-sm text-gray-600">No completed services found.</div>
           )}
         </main>

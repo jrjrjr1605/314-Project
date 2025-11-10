@@ -18,6 +18,7 @@ type LoggedInUser = {
   status: string
   last_login?: string | null
   pin_user_id?: number | null
+  csr_user_id?: number | null
 }
 
 export function LoginForm({
@@ -65,7 +66,7 @@ export function LoginForm({
         !data.id
       ) {
         // Invalid credentials → redirect to login page
-        navigate("/login")
+        navigate("/")
         return
       }
 
@@ -83,7 +84,7 @@ export function LoginForm({
           navigate("/ua/dashboard")
           break
         case "CSR":
-          navigate(`/csr/dashboard/user?id=${user.id}`)
+          navigate(`/csr/dashboard/user?id=${user.csr_user_id}`)
           break
         case "PIN":
           navigate(`/pin/dashboard/user?id=${user.pin_user_id}`)

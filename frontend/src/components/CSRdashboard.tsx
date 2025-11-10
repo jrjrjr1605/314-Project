@@ -58,102 +58,118 @@ export default function CSRDashboard() {
   const [requests, setRequests] = useState<PinRequest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
-
   const [viewMode, setViewMode] = useState<"available" | "shortlisted">("available")
   const [query, setQuery] = useState("")
-  const PAGE_SIZE = 24
-  const [offset, setOffset] = useState(0)
 
   const csrId = useCsrId()
   const [shortlistBusy, setShortlistBusy] = useState<number | null>(null)
 
-  // ✅ normal listing endpoint
-  const buildListUrl = (opts: { limit: number; offset: number }) => {
-    const u = new URL(`${API_BASE}/api/requests`)
-    if (csrId) u.searchParams.set("csr_id", String(csrId))
-    if (viewMode === "available") u.searchParams.set("status", "pending")
-    else u.searchParams.set("status", "shortlisted")
-    u.searchParams.set("limit", String(opts.limit))
-    u.searchParams.set("offset", String(opts.offset))
+  // -------- BASE URLs --------
+  const buildAvailableUrl = () => {
+    const u = new URL(`${API_BASE}/api/requests/available`)
+    if (csrId) u.searchParams.set("csr_user_id", String(csrId))
     return u.toString()
   }
 
-  // ✅ new search endpoint
-  const buildSearchUrl = (q: string) => {
-    const u = new URL(`${API_BASE}/api/requests/search`)
-    u.searchParams.set("q", q.trim())
-    if (csrId) u.searchParams.set("csr_id", String(csrId))
+  const buildShortlistedUrl = () => {
+    const u = new URL(`${API_BASE}/api/requests/shortlisted`)
+    if (csrId) u.searchParams.set("csr_user_id", String(csrId))
     return u.toString()
   }
 
-  // ✅ fetch regular list
-  const fetchPage = async (reset = false) => {
+  const buildAvailableSearchUrl = (q: string) => {
+    const u = new URL(`${API_BASE}/api/requests/search/available`)
+    u.searchParams.set("search_input", q.trim())
+    if (csrId) u.searchParams.set("csr_user_id", String(csrId))
+    return u.toString()
+  }
+
+  const buildShortlistedSearchUrl = (q: string) => {
+    const u = new URL(`${API_BASE}/api/requests/search/shortlisted`)
+    u.searchParams.set("search_input", q.trim())
+    if (csrId) u.searchParams.set("csr_user_id", String(csrId))
+    return u.toString()
+  }
+
+  // -------- FETCH FUNCTIONS --------
+  const fetchAvailableRequests = async () => {
     setLoading(true)
     setError(null)
     try {
-      const url = buildListUrl({ limit: PAGE_SIZE, offset: reset ? 0 : offset })
-      const res = await fetch(url, { headers: { Accept: "application/json" } })
+      const res = await fetch(buildAvailableUrl(), { headers: { Accept: "application/json" } })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
-      const list = Array.isArray(data) ? data : []
-      const filtered =
-        viewMode === "available"
-          ? list.filter(r => !r.my_shortlisted && r.status === "pending")
-          : list.filter(r => r.my_shortlisted && r.status === "pending")
-
-      if (reset) {
-        setRequests(filtered)
-        setOffset(filtered.length)
-      } else {
-        setRequests(prev => [...prev, ...filtered])
-        setOffset(prev => prev + filtered.length)
-      }
-      setHasMore(filtered.length === PAGE_SIZE)
+      setRequests(Array.isArray(data) ? data : [])
     } catch (e: any) {
-      setError(e?.message || "Failed to load requests")
+      setError(e?.message || "Failed to load available requests")
     } finally {
       setLoading(false)
     }
   }
 
-  // ✅ fetch from search endpoint
-  const fetchSearchResults = async () => {
-    if (!query.trim()) {
-      // empty query resets to default list
-      fetchPage(true)
-      return
-    }
+  const fetchShortlistedRequests = async () => {
     setLoading(true)
     setError(null)
     try {
-      const url = buildSearchUrl(query)
-      const res = await fetch(url, { headers: { Accept: "application/json" } })
+      const res = await fetch(buildShortlistedUrl(), { headers: { Accept: "application/json" } })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
-      const list = Array.isArray(data) ? data : []
-
-      // Same shortlist filtering for consistency
-      const filtered =
-        viewMode === "available"
-          ? list.filter(r => !r.my_shortlisted && r.status === "pending")
-          : list.filter(r => r.my_shortlisted && r.status === "pending")
-
-      setRequests(filtered)
-      setHasMore(false) // search doesn’t paginate
+      setRequests(Array.isArray(data) ? data : [])
     } catch (e: any) {
-      setError(e?.message || "Failed to search requests")
+      setError(e?.message || "Failed to load shortlisted requests")
     } finally {
       setLoading(false)
     }
   }
 
+  // -------- SEARCH FUNCTIONS --------
+  const fetchAvailableSearchResults = async () => {
+    if (!query.trim()) return fetchAvailableRequests()
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(buildAvailableSearchUrl(query), { headers: { Accept: "application/json" } })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setRequests(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setError(e?.message || "Failed to search available requests")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchShortlistedSearchResults = async () => {
+    if (!query.trim()) return fetchShortlistedRequests()
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(buildShortlistedSearchUrl(query), { headers: { Accept: "application/json" } })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setRequests(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setError(e?.message || "Failed to search shortlisted requests")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // -------- HANDLERS --------
+  const handleSearch = () => {
+    if (viewMode === "available") fetchAvailableSearchResults()
+    else fetchShortlistedSearchResults()
+  }
+
+  const handleReset = () => {
+    setQuery("")
+    if (viewMode === "available") fetchAvailableRequests()
+    else fetchShortlistedRequests()
+  }
+
+  // -------- SHORTLIST HANDLER --------
   const toggleShortlist = async (req: PinRequest) => {
-    if (!csrId) {
-      alert("Please log in as a CSR.")
-      return
-    }
-
+    if (!csrId) return alert("Please log in as a CSR.")
     setShortlistBusy(req.id)
     try {
       const url = `${API_BASE}/api/requests/${req.id}/shortlist`
@@ -166,44 +182,20 @@ export default function CSRDashboard() {
           body: req.my_shortlisted ? undefined : JSON.stringify({ csr_id: csrId }),
         }
       )
-
       if (!res.ok) throw new Error(await res.text())
       const result = await res.json()
 
-      if (result === true) {
-        if (req.my_shortlisted) {
-          // 🟥 removing
-          alert("❌ Removed from shortlist.")
-          if (viewMode === "shortlisted") {
-            setRequests(prev => prev.filter(r => r.id !== req.id))
-          } else {
-            setRequests(prev =>
-              prev.map(r =>
-                r.id === req.id
-                  ? { ...r, my_shortlisted: false, shortlistees_count: (r.shortlistees_count ?? 1) - 1 }
-                  : r
-              )
-            )
-          }
-        } else {
-          // 🟩 adding
-          alert("✅ Added to shortlist.")
-          if (viewMode === "available") {
-            setRequests(prev => prev.filter(r => r.id !== req.id))
-          } else {
-            setRequests(prev =>
-              prev.map(r =>
-                r.id === req.id
-                  ? { ...r, my_shortlisted: true, shortlistees_count: (r.shortlistees_count ?? 0) + 1 }
-                  : r
-              )
-            )
-          }
-        }
-      } else if (typeof result === "string") {
+      // ✅ Follow backend: true → do nothing; string → show alert + refresh
+      if (typeof result === "string") {
         alert(result)
+        if (viewMode === "available") fetchAvailableRequests()
+        else fetchShortlistedRequests()
       }
-
+      // If backend returns true, just refresh silently
+      else if (result === true) {
+        if (viewMode === "available") fetchAvailableRequests()
+        else fetchShortlistedRequests()
+      }
     } catch (e: any) {
       alert(e?.message || "Failed to update shortlist.")
     } finally {
@@ -211,11 +203,12 @@ export default function CSRDashboard() {
     }
   }
 
-
-
+  // -------- LIFECYCLE --------
   useEffect(() => {
-    if (csrId !== null) fetchPage(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (csrId !== null) {
+      if (viewMode === "available") fetchAvailableRequests()
+      else fetchShortlistedRequests()
+    }
   }, [viewMode, csrId])
 
   const sorted = useMemo(() => {
@@ -226,12 +219,13 @@ export default function CSRDashboard() {
     })
   }, [requests])
 
+  // -------- UI --------
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
         <AppSidebar />
         <main className="flex-1 bg-50 p-6 space-y-8">
-          {/* Controls row */}
+          {/* --- Search and Filters --- */}
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
               <div className="text-sm font-medium">Search</div>
@@ -239,14 +233,15 @@ export default function CSRDashboard() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") fetchSearchResults()
-                  }}
-                  placeholder='Try: "food", "emergency", or Service Type'
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder={`Search ${viewMode === "available" ? "available" : "shortlisted"} requests`}
                   className="w-[320px]"
                 />
-                <Button variant="outline" onClick={fetchSearchResults}>
+                <Button variant="outline" onClick={handleSearch} disabled={loading}>
                   Search
+                </Button>
+                <Button variant="secondary" onClick={handleReset} disabled={loading}>
+                  Reset
                 </Button>
               </div>
             </div>
@@ -267,11 +262,10 @@ export default function CSRDashboard() {
             </div>
           </div>
 
-          {/* Loading/Error */}
+          {/* --- Results Grid --- */}
           {loading && <div className="text-sm text-gray-600">Loading requests…</div>}
-          {error && <div className="text-sm text-red-600">Failed to load: {error}</div>}
+          {error && <div className="text-sm text-red-600">{error}</div>}
 
-          {/* Cards grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 auto-rows-fr">
             {!loading && !error && sorted.map((r) => (
               <Card key={r.id} className="h-full flex flex-col hover:shadow-md transition-shadow w-70">
@@ -289,52 +283,15 @@ export default function CSRDashboard() {
                 <CardContent className="flex flex-col gap-3 grow">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`${API_BASE}/api/requests/${r.id}/view`, { method: "POST" })
-                              if (!res.ok) throw new Error(await res.text())
-                              const result = await res.json()
-
-                              if (result === true) {
-                                // Backend says "success" — increment locally
-                                setRequests(prev =>
-                                  prev.map(x =>
-                                    x.id === r.id
-                                      ? { ...x, view_count: (x.view_count ?? 0) + 1 }
-                                      : x
-                                  )
-                                )
-                              } else if (typeof result === "string") {
-                                // Backend returned error message
-                                alert(`❌ ${result}`)
-                              } else {
-                                // Fallback for unexpected data
-                                console.warn("Unexpected response format:", result)
-                              }
-                            } catch (e: any) {
-                              console.warn("Failed to increment view count", e)
-                              alert(e?.message || "Failed to increment view count.")
-                            }
-                          }}
-                      >
-                        View
-                      </Button>
+                      <Button size="sm" variant="outline" className="mt-2">View</Button>
                     </DialogTrigger>
-
                     <DialogContent className="max-w-md">
                       <DialogHeader>
                         <DialogTitle>{r.title}</DialogTitle>
                         <DialogDescription>{r.category_name || "Misc"}</DialogDescription>
                       </DialogHeader>
-
                       <div className="space-y-3 text-sm">
-                        {r.description && (
-                          <p className="text-gray-700 whitespace-pre-line">{r.description}</p>
-                        )}
+                        {r.description && <p className="text-gray-700 whitespace-pre-line">{r.description}</p>}
                         <div className="text-gray-500">
                           <div>Created: {formatDT(r.created_at)}</div>
                           <div>Updated: {formatDT(r.updated_at)}</div>
@@ -342,7 +299,6 @@ export default function CSRDashboard() {
                           <div>Shortlists: {r.shortlistees_count ?? 0}</div>
                         </div>
                       </div>
-
                       <div className="pt-4 flex justify-end">
                         <Button
                           size="sm"
@@ -363,19 +319,6 @@ export default function CSRDashboard() {
               </Card>
             ))}
           </div>
-
-          {/* Pager */}
-          {!loading && hasMore && !query && (
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => fetchPage(false)}>Load more</Button>
-            </div>
-          )}
-          {!loading && !hasMore && requests.length > 0 && (
-            <div className="text-center text-xs text-gray-500">No more results.</div>
-          )}
-          {!loading && !error && sorted.length === 0 && (
-            <div className="text-sm text-gray-600">No requests found.</div>
-          )}
         </main>
       </div>
     </SidebarProvider>
