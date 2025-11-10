@@ -1,13 +1,33 @@
-from app.models.models import UserAccount
+from app.models.models import UserAccount, UserProfile
 from app.database import get_db_session
 
 class UserAccountEntity:
     def login(self, username: str, password: str):
-        with get_db_session() as db: # Passing the db session here
-            user = db.query(UserAccount).filter(UserAccount.username == username).first() # Fetching user by username
-            if not user or user.password != password: # Validating password
-                return UserAccount(id=None, username="", password="") # Return empty user object if invalid
-            return user # Else, return the relevant user object
+        with get_db_session() as db:
+            user = db.query(UserAccount).filter(UserAccount.username == username).first()
+            if not user or user.password != password:
+                # Invalid credentials → return empty object
+                return {}
+
+            # Fetch role info from user_profiles using the foreign key
+            role_data = None
+            if user.role:
+                role = db.query(UserProfile).filter(UserProfile.id == user.role).first()
+                if role:
+                    role_data = {
+                        "id": role.id,
+                        "name": role.name,
+                        "status": role.status,
+                    }
+            
+            return {
+                "id": user.id,
+                "username": user.username,
+                "email_address": user.email_address,
+                "status": user.status,
+                "last_login": str(user.last_login) if user.last_login else None,
+                "role": role_data["name"] if role_data else None,
+            } # Return user data as dict
         
     def get_all_users(self):
         with get_db_session() as db: # Passing the db session here
@@ -78,7 +98,17 @@ class UserAccountEntity:
                 return True # Return True on successful creation
             except Exception as e:
                 db.rollback()
-                print(f"❌ Error creating user: {e}")
-                return "Failed to create user"
+                print(f"Error creating user: {e}")
+                return "Failed to create user" # Return str on failure
             
+    def search_users(self, search_input: str):
+        with get_db_session() as db:
+            search_pattern = f"%{search_input}%" # Create search pattern for LIKE query
+            users = db.query(UserAccount).join(UserProfile, UserAccount.role == UserProfile.id, isouter=True).filter(
+                (UserAccount.username.ilike(search_pattern)) |
+                (UserAccount.email_address.ilike(search_pattern)) |
+                (UserProfile.name.ilike(search_pattern)) |
+                (UserAccount.status.ilike(search_pattern))
+            ).all() # Fetch users matching the search criteria
+            return users # Return the list of matching users
     

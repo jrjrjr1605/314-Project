@@ -89,6 +89,11 @@ const data = {
       icon: Plus,
     },
     {
+      name: "User Profiles",
+      url: "/ua/user-profiles",
+      icon: Plus,
+    },
+    {
         name: "Logs",
         url: "#",
         icon: BookOpen,

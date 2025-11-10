@@ -40,6 +40,8 @@ import {
 
 export default function UADashboard() {
   const [users, setUsers] = useState<any[]>([])
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([])
+  const [roleMap, setRoleMap] = useState<Record<number, string>>({})
   const [totalUsers, setTotalUsers] = useState(0)
   const [activeUsers, setActiveUsers] = useState(0)
   const [suspendedUsers, setSuspendedUsers] = useState(0)
@@ -47,96 +49,135 @@ export default function UADashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [open, setOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
-  const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [loading, setLoading] = useState(false)
 
-  // --- Fetch all users and update stats ---
+  // --- Fetch all user profiles (roles) ---
+  async function fetchRoles() {
+    try {
+      const res = await fetch("http://localhost:8000/api/user_profiles")
+      const data = await res.json()
+      const map: Record<number, string> = {}
+      data.forEach((r: any) => {
+        map[r.id] = r.name.toUpperCase()
+      })
+      setRoleMap(map)
+    } catch (err) {
+      console.error("Error fetching roles:", err)
+    }
+  }
+
+  // --- Fetch all users ---
   async function fetchUsers() {
     setLoading(true)
     try {
       const res = await fetch("http://localhost:8000/api/users")
-      if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`)
+      if (!res.ok) throw new Error("Failed to fetch users")
       const data = await res.json()
-
-      // Sort ascending by ID before saving
-      const sortedData = [...data].sort((a, b) => a.id - b.id)
-      setUsers(sortedData)
-
-      const total = sortedData.length
-      const active = sortedData.filter(
-        (u: any) => u.status?.toLowerCase() === "active"
-      ).length
-      const suspended = sortedData.filter(
-        (u: any) => u.status?.toLowerCase() === "suspended"
-      ).length
-
-      // --- Role-based counts (ACTIVE users only) ---
-      const counts: Record<string, number> = {}
-      sortedData
-        .filter((u: any) => u.status?.toLowerCase() === "active")
-        .forEach((u: any) => {
-          const role = u.role?.toUpperCase() || "UNASSIGNED"
-          counts[role] = (counts[role] || 0) + 1
-        })
-
-      setTotalUsers(total)
-      setActiveUsers(active)
-      setSuspendedUsers(suspended)
-      setRoleCounts(counts)
-    } catch (error) {
-      console.error("Error fetching users:", error)
+      const sorted = [...data].sort((a, b) => a.id - b.id)
+      setUsers(sorted)
+      setFilteredUsers(sorted)
+      setTotalUsers(sorted.length)
+    } catch (err) {
+      console.error("Error fetching users:", err)
     } finally {
       setLoading(false)
     }
   }
 
+  // --- Wait for both users & roles before computing counts ---
   useEffect(() => {
-    fetchUsers()
+    if (Object.keys(roleMap).length > 0 && users.length > 0) {
+      const active = users.filter((u) => u.status === "active").length
+      const suspended = users.filter((u) => u.status === "suspended").length
+
+      const counts: Record<string, number> = {}
+      users
+        .filter((u) => u.status === "active")
+        .forEach((u) => {
+          const roleName = getRoleName(u.role)
+          counts[roleName] = (counts[roleName] || 0) + 1
+        })
+
+      setActiveUsers(active)
+      setSuspendedUsers(suspended)
+      setRoleCounts(counts)
+    }
+  }, [roleMap, users])
+
+  // --- Initial load ---
+  useEffect(() => {
+    fetchRoles().then(fetchUsers)
   }, [])
+
+  // --- Helper to resolve role name ---
+  function getRoleName(role: any): string {
+    if (!role) return "UNASSIGNED"
+    if (typeof role === "object" && role.name) return role.name.toUpperCase()
+    if (typeof role === "number") return roleMap[role] || `ROLE #${role}`
+    if (typeof role === "string") return role.toUpperCase()
+    return "UNKNOWN"
+  }
+
+  // --- Manual search ---
+  async function handleSearch() {
+    const query = new URLSearchParams({ search_input: searchTerm }).toString()
+    const res = await fetch(`http://localhost:8000/api/users/search?${query}`)
+    const data = await res.json()
+    setFilteredUsers(data)
+  }
+
+  function resetFilters() {
+    setSearchTerm("")
+    setFilteredUsers(users)
+  }
 
   // --- Update user info ---
   async function UpdateUser(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedUser) return
 
-    try {
-      const userToUpdate = {
-        ...selectedUser,
-        role:
-          selectedUser.role?.toUpperCase() === "UNASSIGNED"
-            ? null
-            : selectedUser.role,
-      }
+    // Convert role name → ID for backend
+    let roleValue: number | null = null
+    if (selectedUser.role && typeof selectedUser.role === "string") {
+      const match = Object.entries(roleMap).find(
+        ([, name]) => name === selectedUser.role.toUpperCase()
+      )
+      roleValue = match ? Number(match[0]) : null
+    } else if (typeof selectedUser.role === "number") {
+      roleValue = selectedUser.role
+    }
 
+    const updatedUser = {
+      ...selectedUser,
+      role: roleValue,
+    }
+
+    try {
       const res = await fetch(
         `http://localhost:8000/api/users/${selectedUser.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userToUpdate),
+          body: JSON.stringify(updatedUser),
         }
       )
 
       const result = await res.json()
-
-      if (!res.ok) throw new Error(`Failed to update user: ${res.status}`)
-
       if (result === true) {
-        alert(`${selectedUser.username} updated successfully!`)
+        // ✅ backend success: just refresh silently
         setOpen(false)
-        await fetchUsers()
+        fetchUsers()
       } else if (typeof result === "string") {
-        alert(`${result}`)
-      } else {
-        alert("Unexpected response from server.")
+        // ⚠️ backend returned failure message
+        alert(result)
       }
-    } catch (error) {
-      console.error("Error updating user:", error)
-      alert("Failed to update user. Check console for details.")
+    } catch (err) {
+      console.error("Error updating user:", err)
+      alert("Failed to update user.")
     }
   }
 
-  // --- Suspend or Reactivate user ---
+  // --- Suspend / Reactivate user ---
   async function toggleUserStatus(user: any) {
     const action = user.status === "active" ? "suspend" : "reactivate"
     const confirmMsg =
@@ -153,21 +194,15 @@ export default function UADashboard() {
       )
 
       const result = await res.json()
-
       if (result === true) {
-        alert(
-          user.status === "active"
-            ? `${user.username} has been suspended.`
-            : `${user.username} has been reactivated.`
-        )
-        await fetchUsers() // Always reload sorted ascending
+        // ✅ success → silent refresh
+        fetchUsers()
       } else if (typeof result === "string") {
-        alert(`${result}`)
-      } else {
-        alert("Unexpected response from server.")
+        // ⚠️ failure message from backend
+        alert(result)
       }
-    } catch (error) {
-      console.error(`Error trying to ${action} user:`, error)
+    } catch (err) {
+      console.error(`Error trying to ${action} user:`, err)
       alert(`Failed to ${action} user.`)
     }
   }
@@ -176,12 +211,10 @@ export default function UADashboard() {
     <SidebarProvider>
       <div className="flex min-h-screen">
         <AppSidebar />
-
-        {/* Main content */}
         <main className="flex-1 bg-gray-50 p-6 space-y-10">
-          {/* --- First Row: Summary Cards --- */}
+          {/* --- Summary Cards --- */}
           <div className="flex flex-wrap gap-10 justify-start">
-            <Card className="w-[360px] h-[150px] flex-shrink-0">
+            <Card className="w-[360px] h-[150px]">
               <CardHeader>
                 <CardTitle>User Accounts</CardTitle>
                 <CardDescription>Total number of user accounts</CardDescription>
@@ -193,10 +226,10 @@ export default function UADashboard() {
               </CardContent>
             </Card>
 
-            <Card className="w-[360px] h-[150px] flex-shrink-0">
+            <Card className="w-[360px] h-[150px]">
               <CardHeader>
                 <CardTitle>Active Users</CardTitle>
-                <CardDescription>Accounts currently active</CardDescription>
+                <CardDescription>Currently active accounts</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-4xl font-bold text-green-600">
@@ -205,10 +238,10 @@ export default function UADashboard() {
               </CardContent>
             </Card>
 
-            <Card className="w-[360px] h-[150px] flex-shrink-0">
+            <Card className="w-[360px] h-[150px]">
               <CardHeader>
                 <CardTitle>Suspended Users</CardTitle>
-                <CardDescription>Accounts that are deactivated</CardDescription>
+                <CardDescription>Accounts that are inactive</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-4xl font-bold text-red-600">
@@ -218,15 +251,13 @@ export default function UADashboard() {
             </Card>
           </div>
 
-          {/* --- Second Row: Role Breakdown --- */}
+          {/* --- Role Breakdown --- */}
           <div className="flex flex-wrap gap-10 justify-start">
             {["PLATFORM", "ADMIN", "CSR", "PIN", "UNASSIGNED"].map((role) => (
-              <Card key={role} className="w-[200px] h-[170px] flex-shrink-0">
+              <Card key={role} className="w-[200px] h-[170px]">
                 <CardHeader>
                   <CardTitle>{role}</CardTitle>
-                  <CardDescription>
-                    Active User Accounts with {role} role
-                  </CardDescription>
+                  <CardDescription>Active {role} users</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold text-blue-600">
@@ -237,42 +268,27 @@ export default function UADashboard() {
             ))}
           </div>
 
-          {/* --- User Accounts Table --- */}
+          {/* --- Table --- */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
-            {/* Search and Filter */}
             <div className="flex items-center justify-between pb-3 border-b flex-wrap gap-3">
               <h2 className="text-lg font-semibold text-gray-800">
                 User Accounts
               </h2>
               <div className="flex items-center gap-3">
-                <Select
-                  value={roleFilter}
-                  onValueChange={(value) => setRoleFilter(value)}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Roles</SelectItem>
-                    <SelectItem value="PLATFORM">PLATFORM</SelectItem>
-                    <SelectItem value="ADMIN">ADMIN</SelectItem>
-                    <SelectItem value="CSR">CSR</SelectItem>
-                    <SelectItem value="PIN">PIN</SelectItem>
-                    <SelectItem value="UNASSIGNED">UNASSIGNED</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <input
+                <Input
                   type="text"
                   placeholder="Search by username, role, or email..."
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm w-[250px]"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm w-[250px]"
                 />
+                <Button onClick={handleSearch}>Search</Button>
+                <Button variant="outline" onClick={resetFilters}>
+                  Reset
+                </Button>
               </div>
             </div>
 
-            {/* Table */}
             <Table>
               <TableCaption>List of all user accounts</TableCaption>
               <TableHeader>
@@ -288,76 +304,58 @@ export default function UADashboard() {
               </TableHeader>
 
               <TableBody>
-                {users
-                  .filter((user) => {
-                    if (
-                      roleFilter !== "ALL" &&
-                      (user.role?.toUpperCase() || "UNASSIGNED") !== roleFilter
-                    )
-                      return false
-                    if (!searchTerm) return true
-                    const lower = searchTerm.toLowerCase()
-                    return (
-                      user.username.toLowerCase().includes(lower) ||
-                      user.role?.toLowerCase().includes(lower) ||
-                      user.email_address.toLowerCase().includes(lower) ||
-                      user.status.toLowerCase().includes(lower)
-                    )
-                  })
-                  .map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.id}</TableCell>
-                      <TableCell>{user.username}</TableCell>
-                      <TableCell>{user.role ?? ""}</TableCell>
-                      <TableCell>{user.email_address}</TableCell>
-                      <TableCell
-                        className={
-                          user.status === "active"
-                            ? "text-green-600 font-semibold"
-                            : "text-red-500 font-semibold"
-                        }
-                      >
-                        {user.status}
-                      </TableCell>
-                      <TableCell>
-                        {user.last_login
-                          ? new Date(user.last_login).toLocaleString("en-US", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })
-                          : ""}
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell className="text-center">
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUser(user)
-                              setOpen(true)
-                            }}
-                          >
-                            Update
-                          </Button>
-                          <Button
-                            variant={
-                              user.status === "active"
-                                ? "destructive"
-                                : "default"
-                            }
-                            size="sm"
-                            onClick={() => toggleUserStatus(user)}
-                          >
-                            {user.status === "active"
-                              ? "Suspend"
-                              : "Reactivate"}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.id}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{getRoleName(user.role)}</TableCell>
+                    <TableCell>{user.email_address}</TableCell>
+                    <TableCell
+                      className={
+                        user.status === "active"
+                          ? "text-green-600 font-semibold"
+                          : "text-red-500 font-semibold"
+                      }
+                    >
+                      {user.status}
+                    </TableCell>
+                    <TableCell>
+                      {user.last_login
+                        ? new Date(user.last_login).toLocaleString("en-US", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        : ""}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user)
+                            setOpen(true)
+                          }}
+                        >
+                          Update
+                        </Button>
+                        <Button
+                          variant={
+                            user.status === "active"
+                              ? "destructive"
+                              : "default"
+                          }
+                          size="sm"
+                          onClick={() => toggleUserStatus(user)}
+                        >
+                          {user.status === "active"
+                            ? "Suspend"
+                            : "Reactivate"}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
@@ -405,7 +403,7 @@ export default function UADashboard() {
                   <div className="grid gap-2">
                     <Label htmlFor="role">Role</Label>
                     <Select
-                      value={selectedUser.role?.toUpperCase() || "UNASSIGNED"}
+                      value={getRoleName(selectedUser.role)}
                       onValueChange={(value) =>
                         setSelectedUser({
                           ...selectedUser,
@@ -417,16 +415,17 @@ export default function UADashboard() {
                         <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PLATFORM">PLATFORM</SelectItem>
-                        <SelectItem value="ADMIN">ADMIN</SelectItem>
-                        <SelectItem value="CSR">CSR</SelectItem>
-                        <SelectItem value="PIN">PIN</SelectItem>
+                        {Object.values(roleMap).map((rname) => (
+                          <SelectItem key={rname} value={rname}>
+                            {rname}
+                          </SelectItem>
+                        ))}
                         <SelectItem value="UNASSIGNED">UNASSIGNED</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <DialogFooter className="flex justify-end gap-2">
+                  <DialogFooter>
                     <Button
                       variant="outline"
                       type="button"

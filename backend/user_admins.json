@@ -1,22 +1,22 @@
 [
   {
-    "user_id": 2,
-    "username": "admin1"
+    "ua_user_id": 1,
+    "id": 2
   },
   {
-    "user_id": 3,
-    "username": "admin2"
+    "ua_user_id": 2,
+    "id": 3
   },
   {
-    "user_id": 4,
-    "username": "admin3"
+    "ua_user_id": 3,
+    "id": 4
   },
   {
-    "user_id": 5,
-    "username": "admin4"
+    "ua_user_id": 4,
+    "id": 5
   },
   {
-    "user_id": 6,
-    "username": "admin5"
+    "ua_user_id": 5,
+    "id": 6
   }
 ]

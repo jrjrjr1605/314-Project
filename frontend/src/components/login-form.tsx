@@ -31,7 +31,6 @@ export function LoginForm({
 
   const onClick = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
     setLoading(true)
 
     try {
@@ -42,17 +41,40 @@ export function LoginForm({
       const res = await fetch(`${API_BASE}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData
+        body: formData,
       })
 
-      const user: LoggedInUser = await res.json()
+      let data: any = {}
+      try {
+        const contentType = res.headers.get("content-type")
+        data =
+          contentType && contentType.includes("application/json")
+            ? await res.json()
+            : {}
+      } catch {
+        data = {}
+      }
 
-      // Save user to localStorage
+      // 🧩 Check if login failed
+      if (
+        !res.ok ||
+        !data ||
+        typeof data !== "object" ||
+        Object.keys(data).length === 0 ||
+        !data.id
+      ) {
+        // Invalid credentials → redirect to login page
+        navigate("/login")
+        return
+      }
+
+      // ✅ Successful login
+      const user: LoggedInUser = data
       localStorage.setItem("user", JSON.stringify(user))
 
-      // Role-based redirect
-      const role = (user.role || "").toUpperCase()
-      switch (role) {
+      let roleName = ""
+      roleName = (user.role as string).toUpperCase() 
+      switch (roleName) {
         case "PLATFORM":
           navigate("/pm/dashboard")
           break
@@ -66,16 +88,19 @@ export function LoginForm({
           navigate(`/pin/dashboard/user?id=${user.id}`)
           break
         default:
-          navigate("/dashboard")
+          navigate("/")
           break
-      }
-    } catch (err: any) {
-      console.error(err)
-      setError(err?.message)
+    }
+
+    } catch (err) {
+      // On any error, navigate back to login
+      console.error("Login failed:", err)
+      navigate("/")
     } finally {
       setLoading(false)
     }
   }
+
 
   return (
     <div

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Form
 from app.controllers.login_controller import LoginController
-from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController
+from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController, searchUserController, getUserProfilesController, createUserProfilesController, updateUserProfilesController, suspendUserProfilesController, reactivateUserProfilesController, searchUserProfilesController
 from app.controllers.pin_controller import getPinRequestsController, createPinRequestController
 from app.controllers.csr_controller import getCSRRequestController, searchCSRRequestsController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController
 from app.controllers.pm_controller import createCategoryController, updateCategoryController, deleteCategoryController, getCategoryController, searchCategoryController, generateWeeklyReportController, generateDailyReportController, generateMonthlyReportController
@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api", tags=["API"])
 
 # ------------------ User Admin ------------------
 
+# Login
 @router.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
     controller = LoginController()
@@ -20,6 +21,7 @@ def login(username: str = Form(...), password: str = Form(...)):
 
     return user # Return user object on success and str on failure
 
+# View
 @router.get("/users")
 def get_users():
     controller = getUserController()
@@ -27,6 +29,7 @@ def get_users():
 
     return users # Return the list of users if success and empty list on failure
 
+# Update
 @router.put("/users/{user_id}")
 def update_user(user_id: int, user_data: dict):
     controller = updateUserController()
@@ -34,7 +37,7 @@ def update_user(user_id: int, user_data: dict):
 
     return result # Return True on success and str on failure
 
-
+# Suspend
 @router.put("/users/suspend/{user_id}")
 def suspend_user(user_id: int):
     controller = suspendUserController()
@@ -42,6 +45,7 @@ def suspend_user(user_id: int):
 
     return result # Return True on success and str on failure
 
+# Reactivate
 @router.put("/users/reactivate/{user_id}")
 def reactivate_user(user_id: int):
     controller = reactivateUserController()
@@ -49,12 +53,69 @@ def reactivate_user(user_id: int):
 
     return result # Return True on success and str on failure
 
+# Create
 @router.post("/users")
 def create_user(user_data: dict):
     controller = createUserController() 
     result = controller.create_user(user_data)
 
     return result # Return True on success and str on failure
+
+# Search
+@router.get("/users/search")
+def search_users(search_input: str):
+    controller = searchUserController()
+    result = controller.search_users(search_input)
+
+    return result # Return the list of matching users if success and empty list on failure
+
+# View
+@router.get("/user_profiles/")
+def get_user_profiles():
+    controller = getUserProfilesController()
+    result = controller.get_user_profiles()
+
+    return result # Return the list of user profiles if success and empty list on failure
+
+# Create
+@router.post("/user_profiles/")
+def create_user_profile(profile_data: dict):
+    controller = createUserProfilesController()
+    result = controller.create_user_profile(profile_data)
+
+    return result # Return True on success and str on failure
+
+# Update
+@router.put("/user_profiles/{profile_id}")
+def update_user_profile(profile_id: int, profile_data: dict):
+    controller = updateUserProfilesController()
+    result = controller.update_user_profile(profile_id, profile_data)
+
+    return result # Return True on success and str on failure
+
+# Suspend
+@router.put("/user_profiles/suspend/{profile_id}")
+def suspend_user_profile(profile_id: int):
+    controller = suspendUserProfilesController()
+    result = controller.suspend_user_profile(profile_id)
+
+    return result # Return True on success and str on failure
+
+# Reactivate
+@router.put("/user_profiles/reactivate/{profile_id}")
+def reactivate_user_profile(profile_id: int):
+    controller = reactivateUserProfilesController()
+    result = controller.reactivate_user_profile(profile_id)
+
+    return result # Return True on success and str on failure
+
+# Search
+@router.get("/user_profiles/search")
+def search_user_profiles(search_input: str):
+    controller = searchUserProfilesController()
+    result = controller.search_user_profiles(search_input)
+
+    return result # Return the list of matching user profiles if success and empty list on failure
 
 # ------------------ PIN ------------------
 

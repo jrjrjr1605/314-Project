@@ -11,6 +11,7 @@ import PMDashboard from "./components/PMDashboard"
 import PMWeeklyReport from "./components/PMWeeklyReport"
 import PMDailyReport from "./components/PMDailyReport"
 import PMMonthlyReport from "./components/PMMonthlyReport"
+import UAUserProfiles from "./components/UAUserProfiles"
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
       <Route path="/pm-weekly-report" element={<PMWeeklyReport />} />
       <Route path="/pm-daily-report" element={<PMDailyReport />} />
       <Route path="/pm-monthly-report" element={<PMMonthlyReport />} />
+      <Route path="/ua/user-profiles" element={<UAUserProfiles />} />
     </Routes>
   )
 }

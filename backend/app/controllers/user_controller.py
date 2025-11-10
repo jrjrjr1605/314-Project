@@ -1,4 +1,5 @@
 from app.entity.userAccount_entity import UserAccountEntity
+from app.entity.userProfiles_entity import UserProfilesEntity
 
 class getUserController:
     def get_all_users(self):
@@ -34,3 +35,52 @@ class createUserController:
         entity = UserAccountEntity() # Create an instance of UserAccountEntity
 
         return entity.create_user(user_data) # Call the create_user method of the entity and return the bool result
+    
+class searchUserController:
+    def search_users(self, search_input: str):
+
+        entity = UserAccountEntity() # Create an instance of UserAccountEntity
+
+        return entity.search_users(search_input) # Call the search_users method of the entity and return the list of user objects
+
+class getUserProfilesController:
+    def get_user_profiles(self):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.get_user_profiles() # Call the get_user_profiles method of the entity and return the list of user profile objects
+    
+class createUserProfilesController:
+    def create_user_profile(self, profile_data: dict):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.create_user_profile(profile_data) # Call the create_user_profile method of the entity and return the bool result
+    
+class updateUserProfilesController:
+    def update_user_profile(self, profile_id: int, profile_data: dict):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.update_user_profile(profile_id, profile_data) # Call the update_user_profile method of the entity and return the bool result
+    
+class suspendUserProfilesController:
+    def suspend_user_profile(self, profile_id: int):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.suspend_user_profile(profile_id) # Call the suspend_user_profile method of the entity and return the bool result
+
+class reactivateUserProfilesController:
+    def reactivate_user_profile(self, profile_id: int):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.reactivate_user_profile(profile_id) # Call the reactivate_user_profile method of the entity and return the bool result
+
+class searchUserProfilesController:
+    def search_user_profiles(self, search_input: str):
+
+        entity = UserProfilesEntity() # Create an instance of UserProfilesEntity
+
+        return entity.search_user_profiles(search_input) # Call the search_user_profiles method of the entity and return the list of user profile objects
