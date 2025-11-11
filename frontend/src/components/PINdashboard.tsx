@@ -34,8 +34,6 @@ type PinRequest = {
   status: "pending" | "assigned" | "completed"
   created_at?: string | null
   updated_at?: string | null
-  view?: number
-  shortlistees_count?: number
   category_name?: string | null
   category_id?: number | null
 }
@@ -75,6 +73,10 @@ export default function PINDashboard() {
   // 🟩 Categories
   const [categories, setCategories] = useState<Category[]>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
+
+  // Split data sources
+  const [viewsMap, setViewsMap] = useState<Record<number, number>>({})
+  const [shortlistsMap, setShortlistsMap] = useState<Record<number, number>>({})
 
   // Viewer
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -120,6 +122,11 @@ export default function PINDashboard() {
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.items ?? []
       setRequests(list)
+
+      // fetch views and shortlists separately
+      const ids = list.map((r: PinRequest) => r.id)
+      fetchViews(ids)
+      fetchShortlists(ids)
     } catch (e: any) {
       if (e?.name !== "AbortError")
         setError(e?.message || "Failed to load requests")
@@ -128,6 +135,49 @@ export default function PINDashboard() {
     }
   }
 
+  // ----------- Fetch Views -----------
+  const fetchViews = async (ids: number[]) => {
+    if (!ids.length) return
+    const map: Record<number, number> = {}
+
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${API_BASE}/api/pin-request-views?request_id=${id}`, {
+          headers: { Accept: "application/json" },
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const viewCount = await res.json()
+        map[id] = typeof viewCount === "number" ? viewCount : 0
+      } catch (err) {
+        console.error(`Failed to load views for request ${id}:`, err)
+        map[id] = 0
+      }
+    }
+
+    setViewsMap(map)
+  }
+
+  // ----------- Fetch Shortlists -----------
+  const fetchShortlists = async (ids: number[]) => {
+    if (!ids.length) return
+    const map: Record<number, number> = {}
+
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${API_BASE}/api/pin-request-shortlists?request_id=${id}`, {
+          headers: { Accept: "application/json" },
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const count = await res.json()
+        map[id] = typeof count === "number" ? count : 0
+      } catch (err) {
+        console.error(`Failed to load shortlists for request ${id}:`, err)
+        map[id] = 0
+      }
+    }
+
+    setShortlistsMap(map)
+  }
   // ----------- Fetch Categories -----------
   const fetchCategories = async () => {
     setLoadingCategories(true)
@@ -163,6 +213,10 @@ export default function PINDashboard() {
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.items ?? []
       setRequests(list)
+
+      const ids = list.map((r: PinRequest) => r.id)
+      fetchViews(ids)
+      fetchShortlists(ids)
     } catch (err: any) {
       console.error(err)
       setError(err.message || "Search failed")
@@ -189,17 +243,14 @@ export default function PINDashboard() {
       if (!res.ok) throw new Error(result.detail || `HTTP ${res.status}`)
 
       if (result === true) {
-        // ✅ Success — remove from list silently
         setRequests((prev) => prev.filter((r) => r.id !== req.id))
       } else if (typeof result === "string") {
-        // ⚠️ Show backend error message
         alert(result)
       }
     } catch (e: any) {
       alert(e?.message || "Failed to delete request")
     }
   }
-
 
   // ----------- Viewer -----------
   const openViewer = (r: PinRequest) => {
@@ -218,7 +269,6 @@ export default function PINDashboard() {
     setEditOpen(true)
   }
 
-  // Save edits
   const handleSave = async () => {
     if (!editTarget) return
     const body = {
@@ -244,12 +294,10 @@ export default function PINDashboard() {
       if (!res.ok) throw new Error(result.detail || `HTTP ${res.status}`)
 
       if (result === true) {
-        // ✅ Success — refresh list and close modal
         await fetchRequests(pinId!, "")
         setEditOpen(false)
         setEditTarget(null)
       } else if (typeof result === "string") {
-        // ⚠️ Show backend validation / logic error
         setSaveError(result)
       }
     } catch (e: any) {
@@ -266,6 +314,17 @@ export default function PINDashboard() {
     fetchRequests(pinId, undefined, ctrl.signal)
     return () => ctrl.abort()
   }, [pinId])
+
+  // Optional: refresh counts periodically
+  useEffect(() => {
+    if (!requests.length) return
+    const ids = requests.map((r) => r.id)
+    const interval = setInterval(() => {
+      fetchViews(ids)
+      fetchShortlists(ids)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [requests])
 
   const filtered = useMemo(() => {
     let base = requests
@@ -372,11 +431,7 @@ export default function PINDashboard() {
                   <SearchIcon className="h-4 w-4 mr-2" />
                   Search
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  disabled={loading}
-                >
+                <Button variant="outline" onClick={handleReset} disabled={loading}>
                   Reset
                 </Button>
               </CardContent>
@@ -388,7 +443,8 @@ export default function PINDashboard() {
           {error && <p className="text-red-600">{error}</p>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-            {!loading && !error &&
+            {!loading &&
+              !error &&
               sorted.map((r) => (
                 <Card
                   key={r.id}
@@ -413,10 +469,14 @@ export default function PINDashboard() {
 
                   <CardContent className="flex flex-col gap-3 grow">
                     {r.description && (
-                      <p className="text-sm text-gray-700 line-clamp-4">{r.description}</p>
+                      <p className="text-sm text-gray-700 line-clamp-4">
+                        {r.description}
+                      </p>
                     )}
                     <div className="mt-auto flex gap-2">
-                      <Button size="sm" onClick={() => openViewer(r)}>View</Button>
+                      <Button size="sm" onClick={() => openViewer(r)}>
+                        View
+                      </Button>
                       {r.status === "pending" && (
                         <Button
                           size="sm"
@@ -433,7 +493,7 @@ export default function PINDashboard() {
               ))}
           </div>
 
-                    {/* --- View Dialog --- */}
+          {/* --- View Dialog --- */}
           <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
@@ -457,15 +517,21 @@ export default function PINDashboard() {
                 )}
                 <div className="text-xs text-gray-500 grid grid-cols-2 gap-y-1">
                   <span>Category:</span>
-                  <span className="text-right">{selected?.category_name ?? "Misc"}</span>
+                  <span className="text-right">
+                    {selected?.category_name ?? "Misc"}
+                  </span>
                   <span>Created:</span>
                   <span className="text-right">{formatDT(selected?.created_at)}</span>
                   <span>Updated:</span>
                   <span className="text-right">{formatDT(selected?.updated_at)}</span>
                   <span>Views:</span>
-                  <span className="text-right">{selected?.view ?? 0}</span>
+                  <span className="text-right">
+                    {viewsMap[selected?.id ?? 0] ?? 0} 
+                  </span>
                   <span>Shortlistees:</span>
-                  <span className="text-right">{selected?.shortlistees_count ?? 0}</span>
+                  <span className="text-right">
+                    {shortlistsMap[selected?.id ?? 0] ?? 0}
+                  </span>
                 </div>
               </div>
               <DialogFooter className="mt-4 flex justify-between">

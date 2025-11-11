@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Form, Body
 from app.controllers.login_controller import LoginController
 from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController, searchUserController, getUserProfilesController, createUserProfilesController, updateUserProfilesController, suspendUserProfilesController, reactivateUserProfilesController, searchUserProfilesController
-from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController
+from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController, getPinRequestViewsController, getPinRequestShortlistsController
 from app.controllers.csr_controller import getCSRRequestAvailableController, searchCSRRequestAvailableController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController, searchCSRRequestShortlistedController, getCSRRequestShortlistedController, getCSRRequestCompletedController, searchCSRRequestCompletedController
 from app.controllers.pm_controller import createCategoryController, updateCategoryController, deleteCategoryController, getCategoryController, searchCategoryController, generateWeeklyReportController, generateDailyReportController, generateMonthlyReportController
 from app.controllers.assignment_controller import getAllRequestsController, updateRequestController, viewRequestController
@@ -159,6 +159,21 @@ def update_pin_request(request_id: int, request_data: dict):
 
     return result # Return True on success and str on failure
 
+# Number of views
+@router.get("/pin-request-views")
+def get_pin_request_views(request_id: int):
+    controller = getPinRequestViewsController()
+    result = controller.get_pin_request_views(request_id)
+
+    return result
+
+# Number of shortlists
+@router.get("/pin-request-shortlists")
+def get_pin_request_shortlists(request_id: int):
+    controller = getPinRequestShortlistsController()
+    result = controller.get_pin_request_shortlists(request_id)
+
+    return result
 # ------------------ CSR ------------------
 
 # View available requests

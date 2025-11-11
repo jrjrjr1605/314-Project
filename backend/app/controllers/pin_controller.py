@@ -35,3 +35,15 @@ class updatePinRequestController:
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.update_pin_request(request_id, request_data) # Call the update_pin_request method of the entity and return bool on success and str on failure
+    
+class getPinRequestViewsController:
+    def get_pin_request_views(self, request_id: int):
+        entity = PinRequestEntity() # Create an instance of PinRequestEntity
+
+        return entity.get_pin_request_views(request_id) # Call the get_pin_request_views method of the entity and return bool on success and str on failure
+    
+class getPinRequestShortlistsController:
+    def get_pin_request_shortlists(self, request_id: int):
+        entity = PinRequestEntity() # Create an instance of PinRequestShortlist
+
+        return entity.get_pin_request_shortlists(request_id)

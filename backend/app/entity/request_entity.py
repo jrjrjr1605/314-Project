@@ -196,6 +196,40 @@ class PinRequestEntity:
                 print(f"Error creating request: {e}") # Log the error in terminal
                 return f"Failed to create request: {str(e)}" # Return str on failure
             
+    def get_pin_request_views(self, request_id: int):
+        try:
+            with get_db_session() as db:
+                req = db.query(Request).filter(Request.id == request_id).first()
+                if not req:
+                    return "Request not found"
+
+                # Return current view count, default 0 if None
+                return req.view or 0
+
+        except Exception as e:
+            print(f"[ERROR] get_pin_request_views failed for ID {request_id}: {e}")
+            return f"Failed to fetch views: {str(e)}" # Return str on failure
+        
+    def get_pin_request_shortlists(self, request_id: int):
+        try:
+            with get_db_session() as db:
+                req = db.query(Request).filter(Request.id == request_id).first()
+                if not req:
+                    return "Request not found"
+
+                # Count number of CSRs who shortlisted this request
+                shortlists_count = (
+                    db.query(request_shortlists)
+                    .filter(request_shortlists.c.request_id == request_id)
+                    .count()
+                )
+
+                return shortlists_count or 0  # Return integer count
+
+        except Exception as e:
+            print(f"[ERROR] get_pin_request_shortlists failed for ID {request_id}: {e}")
+            return f"Failed to fetch shortlists: {str(e)}" # Return str on failure
+
     def get_csr_requests_available(self, csr_user_id: int = None):
         try:
             with get_db_session() as db:
