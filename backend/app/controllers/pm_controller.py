@@ -49,4 +49,6 @@ class generateMonthlyReportController:
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.generate_monthly_report() # Call the generate_monthly_report method of the entity and return the result
+    
+
 

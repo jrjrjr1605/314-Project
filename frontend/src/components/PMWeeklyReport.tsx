@@ -209,7 +209,6 @@ export default function PMWeeklyReport() {
                             ))}
                           </Pie>
                           <Tooltip />
-                          <Legend verticalAlign="bottom" align="center" iconType="circle" />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>

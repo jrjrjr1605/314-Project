@@ -41,14 +41,20 @@ export default function PMDashboard() {
   const [weeklyReportOpen, setWeeklyReportOpen] = useState(false)
   const [monthlyReportOpen, setMonthlyReportOpen] = useState(false)
 
+  // --- Fetch helpers ---
   const fetchAllCategories = async () => {
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(`${API_BASE}/api/categories`, { headers: { Accept: "application/json" } })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as Category[]
-      setCategories(data)
+      const data = await res.json()
+      if (typeof data === "string") {
+        alert(data)
+        setCategories([])
+      } else {
+        setCategories(data)
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to fetch categories")
     } finally {
@@ -65,8 +71,13 @@ export default function PMDashboard() {
         headers: { Accept: "application/json" },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as Category[]
-      setCategories(data)
+      const data = await res.json()
+      if (typeof data === "string") {
+        alert(data)
+        setCategories([])
+      } else {
+        setCategories(data)
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to search categories")
     } finally {
@@ -78,6 +89,7 @@ export default function PMDashboard() {
     fetchAllCategories()
   }, [])
 
+  // --- CRUD actions ---
   const handleCreate = async () => {
     if (!categoryName.trim()) return alert("Name is required")
     setSaving(true)
@@ -87,14 +99,22 @@ export default function PMDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: categoryName.trim() }),
       })
-      const result = await res.json()
-      if (result === true) {
-        alert("✅ Category created successfully!")
-        await fetchAllCategories()
-        setNewOpen(false)
-        setCategoryName("")
+
+      let result: any = null
+      try {
+        result = await res.json()
+      } catch {
+        // handle 204 No Content or empty body
+        result = null
+      }
+
+      // ✅ Handle true / "true" / { success: true } / 204
+      if (res.ok && (result === true || result === "true" || result?.success === true || result === null)) {
+        await fetchAllCategories() // refresh table
+        setNewOpen(false) // close dialog
+        setCategoryName("") // clear field
       } else if (typeof result === "string") {
-        alert(`❌ ${result}`)
+        alert(result)
       } else {
         alert("⚠️ Unexpected response from server.")
       }
@@ -115,15 +135,21 @@ export default function PMDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: categoryName.trim() }),
       })
-      const result = await res.json()
-      if (result === true) {
-        alert("✅ Category updated successfully!")
-        await fetchAllCategories()
-        setEditOpen(false)
+
+      let result: any = null
+      try {
+        result = await res.json()
+      } catch {
+        result = null
+      }
+
+      if (res.ok && (result === true || result === "true" || result?.success === true || result === null)) {
+        await fetchAllCategories() // refresh table
+        setEditOpen(false) // close edit modal
         setSelectedCategory(null)
         setCategoryName("")
       } else if (typeof result === "string") {
-        alert(`❌ ${result}`)
+        alert(result)
       } else {
         alert("⚠️ Unexpected response from server.")
       }
@@ -135,25 +161,23 @@ export default function PMDashboard() {
   }
 
   const handleDelete = async (cat: Category) => {
-    const ok = window.confirm(`Delete category "${cat.name}"?\n\nAll requests using this category will be updated to have no category.`)
-    if (!ok) return
     try {
       const res = await fetch(`${API_BASE}/api/categories/${cat.id}`, {
         method: "DELETE",
         headers: { Accept: "application/json" },
       })
+
       let data: any = null
       try {
         data = await res.json()
       } catch {
-        data = await res.text()
+        data = null
       }
-      if (!res.ok) throw new Error(typeof data === "string" ? data : "Failed to delete category")
-      if (data === true || data?.success === true) {
-        alert(`✅ Category "${cat.name}" deleted. Requests using it were set to no category.`)
-        setCategories(prev => prev.filter(c => c.id !== cat.id))
+
+      if (res.ok && (data === true || data === "true" || data?.success === true || data === null)) {
+        await fetchAllCategories() // refresh list
       } else if (typeof data === "string") {
-        alert(`⚠️ ${data}`)
+        alert(data)
       } else {
         alert("❌ Failed to delete category. Please try again.")
       }
@@ -167,6 +191,7 @@ export default function PMDashboard() {
     else fetchAllCategories()
   }
 
+  // --- UI ---
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-gray-50">
@@ -208,7 +233,7 @@ export default function PMDashboard() {
                   View, search, add, edit, or delete service categories available in the system.
                 </p>
 
-                {/* Search + Add Category on same line */}
+                {/* Search + Add */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Input
@@ -225,7 +250,6 @@ export default function PMDashboard() {
                 </div>
               </div>
 
-              {/* Table */}
               {loading && <p className="text-sm text-gray-500">Loading categories…</p>}
               {error && <p className="text-sm text-red-600">Error: {error}</p>}
               {!loading && !error && categories.length === 0 && (

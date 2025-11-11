@@ -267,6 +267,7 @@ def search_completed_requests(filters: dict = Body(...)):
 
 # ------------------ PM ------------------
 
+# Create
 @router.post("/categories")
 def create_category(category_info: dict):
     controller = createCategoryController()
@@ -274,6 +275,7 @@ def create_category(category_info: dict):
 
     return result # Return True on success and str on failure
 
+# Update
 @router.put("/categories/{category_id}")
 def update_category(category_id: int, category_info: dict):
     controller = updateCategoryController()
@@ -281,6 +283,7 @@ def update_category(category_id: int, category_info: dict):
 
     return result # Return True on success and str on failure
 
+# Delete
 @router.delete("/categories/{category_id}")
 def delete_category(category_id: int):
     controller = deleteCategoryController()
@@ -288,6 +291,7 @@ def delete_category(category_id: int):
 
     return result # Return True on success and str on failure
 
+# View
 @router.get("/categories")
 def get_category():
     controller = getCategoryController()
@@ -295,12 +299,37 @@ def get_category():
 
     return result # Return list of categories if success and empty list on failure
 
+# Search
 @router.get("/categories/search")
 def search_category(search_input: str):
     controller = searchCategoryController()
     result = controller.search_category(search_input)
 
     return result # Return list of matching categories if success and empty list on failure
+
+# Generate daily report
+@router.get("/pm-daily-report")
+def get_pm_daily_report():
+    controller = generateDailyReportController()
+    result = controller.generate_daily_report()
+
+    return result # Return daily report data if success and error message on failure
+
+# Generate weekly report
+@router.get("/pm-weekly-report")
+def generate_weekly_report():
+    controller = generateWeeklyReportController()
+    result = controller.generate_weekly_report()
+
+    return result # Return weekly report data if success and error message on failure
+
+# Generate monthly report
+@router.get("/pm-monthly-report")
+def get_pm_monthly_report():
+    controller = generateMonthlyReportController()
+    result = controller.generate_monthly_report()
+
+    return result # Return monthly report data if success and error message on failure
 
 # ------------------ Assignment ------------------
 
@@ -324,24 +353,3 @@ def get_request(request_id: int):
     result = controller.view_request(request_id)
 
     return result # returns request object or str on failure
-    
-@router.get("/pm-daily-report")
-def get_pm_daily_report():
-    controller = generateDailyReportController()
-    result = controller.generate_daily_report()
-
-    return result # Return daily report data if success and error message on failure
-
-@router.get("/pm-weekly-report")
-def generate_weekly_report():
-    controller = generateWeeklyReportController()
-    result = controller.generate_weekly_report()
-
-    return result # Return weekly report data if success and error message on failure
-
-@router.get("/pm-monthly-report")
-def get_pm_monthly_report():
-    controller = generateMonthlyReportController()
-    result = controller.generate_monthly_report()
-
-    return result # Return monthly report data if success and error message on failure

@@ -213,7 +213,6 @@ export default function PMMonthlyReport() {
                       ))}
                     </Pie>
                     <Tooltip />
-                    <Legend verticalAlign="bottom" align="center" iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartCard>
