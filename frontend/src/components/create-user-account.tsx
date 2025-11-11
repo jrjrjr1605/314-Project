@@ -58,22 +58,31 @@ export default function CreateUserAccount() {
         body: JSON.stringify(payload),
       })
 
-      const result = await res.json()
-
-      if (!res.ok) throw new Error(`Failed to create user: ${res.status}`)
-
-      if (result === true) {
-        alert("✅ User created successfully!")
-        navigate("/ua/dashboard")
-      } else if (typeof result === "string") {
-        // e.g., "Username already exists" or "Failed to create user"
-        alert(`⚠️ ${result}`)
-      } else {
-        alert("❌ Unexpected response from server.")
+      const text = await res.text()
+      let result: any
+      try {
+        result = JSON.parse(text)
+      } catch {
+        result = text
       }
-    } catch (err) {
+
+      if (!res.ok) throw new Error(result?.detail || `HTTP ${res.status}`)
+
+      // ✅ Success: backend returns `true`
+      if (result === true) {
+        navigate("/ua/dashboard") // silently redirect
+        return
+      }
+
+      // ❌ Backend returned error message (string)
+      if (typeof result === "string") {
+        alert(result)
+      } else {
+        alert("❌ Failed to create user.")
+      }
+    } catch (err: any) {
       console.error(err)
-      alert("❌ Failed to create user. Check console for details.")
+      alert(err?.message || "❌ Failed to create user.")
     } finally {
       setSubmitting(false)
     }
@@ -84,7 +93,9 @@ export default function CreateUserAccount() {
       <Card>
         <CardHeader>
           <CardTitle>Create User Account</CardTitle>
-          <CardDescription>Fill in the details to create a new user.</CardDescription>
+          <CardDescription>
+            Fill in the details to create a new user.
+          </CardDescription>
         </CardHeader>
 
         <CardContent>

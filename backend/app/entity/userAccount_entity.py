@@ -98,7 +98,11 @@ class UserAccountEntity:
             existing_user = (db.query(UserAccount).filter(UserAccount.username == user_data.get("username")).first()) # Check for existing username
             if existing_user:
                 return "Username already exists" # Return str if username exists
-            print(user_data)
+
+            existing_email = (db.query(UserAccount).filter(UserAccount.email_address == user_data.get("email_address")).first()) # Check for existing email address
+            if existing_email:
+                return "Email address already exists" # Return str if email address exists
+            
             try:
                 user = UserAccount(
                     username=user_data.get("username"),

@@ -17,7 +17,7 @@ class UserProfilesEntity:
                     .first()
                 )
                 if existing:
-                    return f"Profile with name '{profile_data.get('name')}' already exists." # Return str on duplicate
+                    return f"Profile already exists." # Return str on duplicate
 
                 new_profile = UserProfile(
                     name=profile_data.get("name"),
