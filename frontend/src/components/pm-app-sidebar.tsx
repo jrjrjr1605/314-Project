@@ -27,11 +27,14 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const data = { // mock data
+const storedUser = localStorage.getItem("user")
+const parsedUser = storedUser ? JSON.parse(storedUser) : null
+
+const data = {
   user: {
-    name: "shadcn",
-    email: "Platform Management",
-    avatar: "/avatars/shadcn.jpg",
+    name: parsedUser?.username || "Guest",
+    email: parsedUser?.role || "No Role",
+    avatar: "/avatars/default.jpg",
   },
   teams: [
     {
