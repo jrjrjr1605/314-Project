@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Form, Body
 from app.controllers.login_controller import LoginController
 from app.controllers.user_controller import getUserController, updateUserController, suspendUserController, reactivateUserController, createUserController, searchUserController, getUserProfilesController, createUserProfilesController, updateUserProfilesController, suspendUserProfilesController, reactivateUserProfilesController, searchUserProfilesController
-from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController, getPinRequestViewsController, getPinRequestShortlistsController
+from app.controllers.pin_controller import getPinRequestsController, createPinRequestController, searchPinRequestController, deletePinRequestController, updatePinRequestController, getPinRequestViewsController, getPinRequestShortlistsController, getPinRequestCompletedController, searchPinRequestCompletedController
 from app.controllers.csr_controller import getCSRRequestAvailableController, searchCSRRequestAvailableController, shortlistCSRRequestController, removeShortlistCSRRequestController, incrementRequestViewController, searchCSRRequestShortlistedController, getCSRRequestShortlistedController, getCSRRequestCompletedController, searchCSRRequestCompletedController
 from app.controllers.pm_controller import createCategoryController, updateCategoryController, deleteCategoryController, getCategoryController, searchCategoryController, generateWeeklyReportController, generateDailyReportController, generateMonthlyReportController
 from app.controllers.assignment_controller import getAllRequestsController, updateRequestController, viewRequestController
@@ -165,7 +165,7 @@ def get_pin_request_views(request_id: int):
     controller = getPinRequestViewsController()
     result = controller.get_pin_request_views(request_id)
 
-    return result
+    return result # Return int when success and str on failure
 
 # Number of shortlists
 @router.get("/pin-request-shortlists")
@@ -173,7 +173,24 @@ def get_pin_request_shortlists(request_id: int):
     controller = getPinRequestShortlistsController()
     result = controller.get_pin_request_shortlists(request_id)
 
-    return result
+    return result # Return int when success and str on failure
+
+# View completed requests
+@router.get("/requests/completed/pin")
+def get_pin_requests_completed():
+    controller = getPinRequestCompletedController()
+    result = controller.get_pin_requests_completed()
+
+    return result # Return the list of completed PIN requests if success and empty list on failure
+
+# Search completed requests
+@router.post("/requests/search/completed/pin")
+def search_pin_requests_completed(filters: dict = Body(...)):
+    controller = searchPinRequestCompletedController()
+    result = controller.search_pin_requests_completed(filters)
+
+    return result # Return the list of completed PIN requests if success and empty list on failure
+
 # ------------------ CSR ------------------
 
 # View available requests
@@ -233,7 +250,7 @@ def increment_request_view(request_id: int):
     return result # Return True on success and str on failure
 
 # View completed requests
-@router.get("/requests/completed")
+@router.get("/requests/completed/csr")
 def get_csr_requests_completed():
     controller = getCSRRequestCompletedController()
     result = controller.get_csr_requests_completed()
@@ -241,11 +258,12 @@ def get_csr_requests_completed():
     return result # Return the list of completed CSR requests if success and empty list on failure
 
 # Search completed requests
-@router.post("/requests/search/completed")
+@router.post("/requests/search/completed/csr")
 def search_completed_requests(filters: dict = Body(...)):
     controller = searchCSRRequestCompletedController()
     result = controller.search_csr_requests_completed(filters)
-    return result
+
+    return result # Return the list of completed CSR requests if success and empty list on failure
 
 # ------------------ PM ------------------
 

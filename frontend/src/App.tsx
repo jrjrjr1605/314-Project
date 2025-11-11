@@ -12,6 +12,7 @@ import PMWeeklyReport from "./components/PMWeeklyReport"
 import PMDailyReport from "./components/PMDailyReport"
 import PMMonthlyReport from "./components/PMMonthlyReport"
 import UAUserProfiles from "./components/UAUserProfiles"
+import PINCompletedRequests from "./components/PINCompletedRequests"
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       <Route path="/pin/dashboard/user" element={<PINDashboard />} />
       <Route path="/ua/create-user-account" element={<CreateUserAccount />} />
       <Route path="/pin/create-pin-request" element={<RequestForm />} />
+      <Route path="/pin/completed-requests" element={<PINCompletedRequests />} />
       <Route path="/csr/dashboard/user" element={<CSRDashboard />} />
       <Route path="/csr/completed-requests" element={<CSRCompletedRequests />} />
       <Route path="/assignment" element={<Assignment />} />

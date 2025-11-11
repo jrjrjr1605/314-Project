@@ -43,7 +43,7 @@ function formatDT(dt?: string | null) {
   }
 }
 
-export default function CSRCompletedRequests() {
+export default function PINCompletedRequests() {
   const [requests, setRequests] = useState<PinRequest[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,7 +77,7 @@ export default function CSRCompletedRequests() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/requests/completed/csr`, {
+      const res = await fetch(`${API_BASE}/api/requests/completed/pin`, {
         headers: { Accept: "application/json" },
       })
       if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`)
@@ -102,7 +102,7 @@ export default function CSRCompletedRequests() {
         completed_before: endDate || null,
       }
 
-      const res = await fetch(`${API_BASE}/api/requests/search/completed/csr`, {
+      const res = await fetch(`${API_BASE}/api/requests/search/completed/pin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),

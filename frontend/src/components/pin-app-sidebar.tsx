@@ -89,6 +89,11 @@ const data = {
       icon: Plus,
     },
     {
+      name: "Past Completed Requests",
+      url: "/pin/completed-requests",
+      icon: Map,
+    },
+    {
         name: "Logs",
         url: "#",
         icon: BookOpen,

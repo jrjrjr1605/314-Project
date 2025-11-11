@@ -47,3 +47,15 @@ class getPinRequestShortlistsController:
         entity = PinRequestEntity() # Create an instance of PinRequestShortlist
 
         return entity.get_pin_request_shortlists(request_id)
+    
+class getPinRequestCompletedController:
+    def get_pin_requests_completed(self):
+        entity = PinRequestEntity() # Create an instance of PinRequestShortlist
+
+        return entity.get_pin_requests_completed() # Call the get_pin_requests_completed method and return the list of completed pin request objects
+
+class searchPinRequestCompletedController:
+    def search_pin_requests_completed(self, filters: dict):
+        entity = PinRequestEntity() # Create an instance of PinRequestShortlist
+
+        return entity.search_pin_requests_completed(filters) # Call the search_pin_requests_completed method and return the list of completed pin request objects by filters
