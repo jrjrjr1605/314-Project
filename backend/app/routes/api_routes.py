@@ -227,7 +227,7 @@ def search_csr_requests_shortlisted(search_input: str, csr_user_id: int = None):
 
 # Shortlist/Save
 @router.post("/requests/{request_id}/shortlist")
-def add_to_shortlist(request_id: int, request_info: dict):
+def shortlist_csr_requests(request_id: int, request_info: dict):
     controller = shortlistCSRRequestController()
     result = controller.shortlist_csr_requests(request_id, request_info)
 

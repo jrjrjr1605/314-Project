@@ -168,7 +168,7 @@ export default function CSRDashboard() {
   }
 
   // -------- SHORTLIST HANDLER --------
-  const add_to_shortlist = async (req: PinRequest) => {
+  const shortlist_csr_requests = async (req: PinRequest) => {
     if (!csrId) return alert("Please log in as a CSR.")
     setShortlistBusy(req.id)
     try {
@@ -303,7 +303,7 @@ export default function CSRDashboard() {
                         <Button
                           size="sm"
                           variant={r.my_shortlisted ? "secondary" : "default"}
-                          onClick={() => add_to_shortlist(r)}
+                          onClick={() => shortlist_csr_requests(r)}
                           disabled={shortlistBusy === r.id}
                         >
                           {shortlistBusy === r.id
