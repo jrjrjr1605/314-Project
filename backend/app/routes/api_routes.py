@@ -259,7 +259,7 @@ def get_csr_requests_completed():
 
 # Search completed requests
 @router.post("/requests/search/completed/csr")
-def search_completed_requests(filters: dict = Body(...)):
+def search_csr_requests_completed(filters: dict = Body(...)):
     controller = searchCSRRequestCompletedController()
     result = controller.search_csr_requests_completed(filters)
 

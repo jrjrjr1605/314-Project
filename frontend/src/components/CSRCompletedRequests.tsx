@@ -91,7 +91,7 @@ export default function CSRCompletedRequests() {
   }
 
   // --- Search completed requests ---
-  const search_completed_requests = async () => {
+  const search_csr_requests_completed = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -199,7 +199,7 @@ export default function CSRCompletedRequests() {
               </div>
 
               <div className="pt-5 flex gap-2">
-                <Button onClick={search_completed_requests} disabled={loading}>
+                <Button onClick={search_csr_requests_completed} disabled={loading}>
                   {loading ? "Searching..." : "Search"}
                 </Button>
                 <Button variant="outline" onClick={handleReset} disabled={loading}>
