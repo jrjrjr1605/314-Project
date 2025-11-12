@@ -35,7 +35,7 @@ export default function CreateUserAccount() {
     setForm((p) => ({ ...p, [k]: v }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function create_user(e: React.FormEvent) {
     e.preventDefault()
 
     if (!form.username.trim()) return alert("Username is required")
@@ -99,7 +99,7 @@ export default function CreateUserAccount() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={create_user} className="space-y-6">
             {/* Username */}
             <div className="grid gap-2">
               <Label htmlFor="username">Username</Label>

@@ -73,7 +73,7 @@ export default function CSRCompletedRequests() {
   }
 
   // --- Fetch all completed requests ---
-  const fetchAllCompletedRequests = async () => {
+  const get_csr_requests_completed = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -91,7 +91,7 @@ export default function CSRCompletedRequests() {
   }
 
   // --- Search completed requests ---
-  const handleSearch = async () => {
+  const search_completed_requests = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -124,13 +124,13 @@ export default function CSRCompletedRequests() {
     setService("all")
     setStartDate("")
     setEndDate("")
-    fetchAllCompletedRequests()
+    get_csr_requests_completed()
   }
 
   // --- Lifecycle ---
   useEffect(() => {
     fetchCategories()
-    fetchAllCompletedRequests()
+    get_csr_requests_completed()
   }, [])
 
   // --- Sort by completion date ---
@@ -199,7 +199,7 @@ export default function CSRCompletedRequests() {
               </div>
 
               <div className="pt-5 flex gap-2">
-                <Button onClick={handleSearch} disabled={loading}>
+                <Button onClick={search_completed_requests} disabled={loading}>
                   {loading ? "Searching..." : "Search"}
                 </Button>
                 <Button variant="outline" onClick={handleReset} disabled={loading}>

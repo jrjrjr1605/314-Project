@@ -536,59 +536,6 @@ class PinRequestEntity:
         except Exception as e:
             print(f"Error searching CSR shortlisted requests: {e}")
             return [] # empty list on failure
-        
-    def search_csr_requests_shortlisted(self, search_input: str, csr_id: int):
-        try:
-            with get_db_session() as db:
-                query = (
-                    db.query(Request)
-                    .options(joinedload(Request.category))
-                    .filter(
-                        or_(
-                            Request.title.ilike(f"%{search_input}%"),
-                            Request.description.ilike(f"%{search_input}%"),
-                        )
-                    )
-                    .order_by(Request.created_at.desc())
-                    .filter(Request.status == "pending")
-                )
-
-                rows = query.all()
-
-                # Build results
-                result = []
-                for r in rows:
-                    my_shortlisted = False
-                    if csr_id:
-                        my_shortlisted = db.query(request_shortlists).filter(
-                            request_shortlists.c.csr_user_id == csr_id,
-                            request_shortlists.c.request_id == r.id
-                        ).first() is not None # Check if CSR has shortlisted this request
-
-                    shortlistees_count = db.query(request_shortlists).filter(
-                        request_shortlists.c.request_id == r.id
-                    ).count() # Count of shortlistees
-
-                    result.append({
-                        "id": r.id,
-                        "pin_user_id": r.pin_user_id,
-                        "title": r.title,
-                        "description": r.description,
-                        "status": r.status,
-                        "category_name": r.category.name if r.category else "Misc",
-                        "assigned_to": r.assigned_to,
-                        "created_at": r.created_at,
-                        "updated_at": r.updated_at,
-                        "completed_at": r.completed_at,
-                        "my_shortlisted": my_shortlisted,
-                        "shortlistees_count": shortlistees_count,
-                    })
-
-                return result  # Return list of search results
-
-        except Exception as e:
-            print(f"Error searching CSR requests: {e}")
-            return {}  # Return empty object on failure
 
     def shortlist_csr_requests(self, request_id: int, request_info: dict):
         csr_id = request_info.get("csr_id")
@@ -890,22 +837,22 @@ class PinRequestEntity:
             print(f"Error fetching request {request_id}: {e}")
             return f"Failed to fetch request: {str(e)}" # Return str on failure
 
-    def generate_daily_report(self):
+    def generate_pm_daily_report(self):
         try:
-            # Determine date
             target_date = date.today()
 
             start_dt = datetime.combine(target_date, datetime.min.time())
             end_dt = datetime.combine(target_date, datetime.max.time())
 
             with get_db_session() as db:
-                # Queries
+                # --- Requests created today ---
                 created_today = (
                     db.query(Request)
                     .options(joinedload(Request.category))
                     .filter(Request.created_at >= start_dt, Request.created_at <= end_dt)
                 )
 
+                # --- Requests assigned today ---
                 assigned_today = (
                     db.query(Request)
                     .options(joinedload(Request.category))
@@ -916,6 +863,7 @@ class PinRequestEntity:
                     )
                 )
 
+                # --- Requests completed today ---
                 completed_today = (
                     db.query(Request)
                     .options(joinedload(Request.category))
@@ -926,14 +874,14 @@ class PinRequestEntity:
                     )
                 )
 
-                # Collect all requests with activity today
+                # ✅ Collect only those requests that had *any* activity today
                 all_requests_today = (
                     db.query(Request)
                     .options(joinedload(Request.category))
                     .filter(
-                        (Request.created_at >= start_dt)
-                        | (Request.updated_at >= start_dt)
-                        | (Request.completed_at >= start_dt)
+                        ((Request.created_at >= start_dt) & (Request.created_at <= end_dt))
+                        | ((Request.updated_at >= start_dt) & (Request.updated_at <= end_dt))
+                        | ((Request.completed_at >= start_dt) & (Request.completed_at <= end_dt))
                     )
                     .order_by(Request.id.asc())
                     .all()
@@ -944,7 +892,7 @@ class PinRequestEntity:
                     "created": created_today.count(),
                     "assigned": assigned_today.count(),
                     "completed": completed_today.count(),
-                } # Summary dict
+                }
 
                 requests_out = [
                     {
@@ -957,19 +905,20 @@ class PinRequestEntity:
                         "completed_at": r.completed_at.isoformat() if r.completed_at else None,
                     }
                     for r in all_requests_today
-                ] # List of request dicts
+                ]
 
                 return {
                     "date": target_date.isoformat(),
                     "summary": summary,
                     "requests": requests_out,
-                } # Return the report
+                }
 
         except Exception as e:
-            print(f"Error generating daily report: {e}")
-            return {"error": f"Failed to generate daily report: {str(e)}"} # Return str on failure
+            print(f"[ERROR] generate_daily_report failed: {e}")
+            return {"error": f"Failed to generate daily report: {str(e)}"}
+
         
-    def generate_weekly_report(self):
+    def generate_pm_weekly_report(self):
         try:
             with get_db_session() as db:
                 now = datetime.now(timezone.utc)
@@ -1048,7 +997,7 @@ class PinRequestEntity:
             print(f"Error generating weekly report: {e}")
             return {"error": f"Failed to generate weekly report: {str(e)}"} # Return str on failure
 
-    def generate_monthly_report(self):
+    def generate_pm_monthly_report(self):
         try:
             with get_db_session() as db:
                 now = datetime.now(timezone.utc)

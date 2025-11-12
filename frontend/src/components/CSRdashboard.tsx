@@ -92,7 +92,7 @@ export default function CSRDashboard() {
   }
 
   // -------- FETCH FUNCTIONS --------
-  const fetchAvailableRequests = async () => {
+  const get_csr_requests_available = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -107,7 +107,7 @@ export default function CSRDashboard() {
     }
   }
 
-  const fetchShortlistedRequests = async () => {
+  const get_csr_requests_shortlisted = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -123,8 +123,8 @@ export default function CSRDashboard() {
   }
 
   // -------- SEARCH FUNCTIONS --------
-  const fetchAvailableSearchResults = async () => {
-    if (!query.trim()) return fetchAvailableRequests()
+  const search_csr_requests_available = async () => {
+    if (!query.trim()) return get_csr_requests_available()
     setLoading(true)
     setError(null)
     try {
@@ -139,8 +139,8 @@ export default function CSRDashboard() {
     }
   }
 
-  const fetchShortlistedSearchResults = async () => {
-    if (!query.trim()) return fetchShortlistedRequests()
+  const search_csr_requests_shortlisted = async () => {
+    if (!query.trim()) return get_csr_requests_shortlisted()
     setLoading(true)
     setError(null)
     try {
@@ -157,18 +157,18 @@ export default function CSRDashboard() {
 
   // -------- HANDLERS --------
   const handleSearch = () => {
-    if (viewMode === "available") fetchAvailableSearchResults()
-    else fetchShortlistedSearchResults()
+    if (viewMode === "available") search_csr_requests_available()
+    else search_csr_requests_shortlisted()
   }
 
   const handleReset = () => {
     setQuery("")
-    if (viewMode === "available") fetchAvailableRequests()
-    else fetchShortlistedRequests()
+    if (viewMode === "available") get_csr_requests_available()
+    else get_csr_requests_shortlisted()
   }
 
   // -------- SHORTLIST HANDLER --------
-  const toggleShortlist = async (req: PinRequest) => {
+  const add_to_shortlist = async (req: PinRequest) => {
     if (!csrId) return alert("Please log in as a CSR.")
     setShortlistBusy(req.id)
     try {
@@ -188,13 +188,13 @@ export default function CSRDashboard() {
       // ✅ Follow backend: true → do nothing; string → show alert + refresh
       if (typeof result === "string") {
         alert(result)
-        if (viewMode === "available") fetchAvailableRequests()
-        else fetchShortlistedRequests()
+        if (viewMode === "available") get_csr_requests_available()
+        else get_csr_requests_shortlisted()
       }
       // If backend returns true, just refresh silently
       else if (result === true) {
-        if (viewMode === "available") fetchAvailableRequests()
-        else fetchShortlistedRequests()
+        if (viewMode === "available") get_csr_requests_available()
+        else get_csr_requests_shortlisted()
       }
     } catch (e: any) {
       alert(e?.message || "Failed to update shortlist.")
@@ -206,8 +206,8 @@ export default function CSRDashboard() {
   // -------- LIFECYCLE --------
   useEffect(() => {
     if (csrId !== null) {
-      if (viewMode === "available") fetchAvailableRequests()
-      else fetchShortlistedRequests()
+      if (viewMode === "available") get_csr_requests_available()
+      else get_csr_requests_shortlisted()
     }
   }, [viewMode, csrId])
 
@@ -303,7 +303,7 @@ export default function CSRDashboard() {
                         <Button
                           size="sm"
                           variant={r.my_shortlisted ? "secondary" : "default"}
-                          onClick={() => toggleShortlist(r)}
+                          onClick={() => add_to_shortlist(r)}
                           disabled={shortlistBusy === r.id}
                         >
                           {shortlistBusy === r.id

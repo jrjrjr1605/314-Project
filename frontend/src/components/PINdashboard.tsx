@@ -110,7 +110,7 @@ export default function PINDashboard() {
     `${API_BASE}/api/pin-requests/${reqId}`
 
   // ----------- Fetch Requests -----------
-  const fetchRequests = async (id: string, filter: string = "", signal?: AbortSignal) => {
+  const get_pin_requests = async (id: string, filter: string = "", signal?: AbortSignal) => {
     setLoading(true)
     setError(null)
     try {
@@ -125,8 +125,8 @@ export default function PINDashboard() {
 
       // fetch views and shortlists separately
       const ids = list.map((r: PinRequest) => r.id)
-      fetchViews(ids)
-      fetchShortlists(ids)
+      get_pin_request_views(ids)
+      get_pin_request_shortlists(ids)
     } catch (e: any) {
       if (e?.name !== "AbortError")
         setError(e?.message || "Failed to load requests")
@@ -136,7 +136,7 @@ export default function PINDashboard() {
   }
 
   // ----------- Fetch Views -----------
-  const fetchViews = async (ids: number[]) => {
+  const get_pin_request_views = async (ids: number[]) => {
     if (!ids.length) return
     const map: Record<number, number> = {}
 
@@ -158,7 +158,7 @@ export default function PINDashboard() {
   }
 
   // ----------- Fetch Shortlists -----------
-  const fetchShortlists = async (ids: number[]) => {
+  const get_pin_request_shortlists = async (ids: number[]) => {
     if (!ids.length) return
     const map: Record<number, number> = {}
 
@@ -194,7 +194,7 @@ export default function PINDashboard() {
   }
 
   // --- Manual search hitting a different API ---
-  const handleSearch = async () => {
+  const search_pin_requests = async () => {
     if (!pinId || !query.trim()) return
 
     setLoading(true)
@@ -215,8 +215,8 @@ export default function PINDashboard() {
       setRequests(list)
 
       const ids = list.map((r: PinRequest) => r.id)
-      fetchViews(ids)
-      fetchShortlists(ids)
+      get_pin_request_views(ids)
+      get_pin_request_shortlists(ids)
     } catch (err: any) {
       console.error(err)
       setError(err.message || "Search failed")
@@ -229,13 +229,12 @@ export default function PINDashboard() {
   const handleReset = async () => {
     if (!pinId) return
     setQuery("")
-    await fetchRequests(pinId, "")
+    await get_pin_requests(pinId, "")
   }
 
   // ----------- Delete -----------
-  const handleDelete = async (req: PinRequest) => {
+  const delete_pin_request = async (req: PinRequest) => {
     if (req.status !== "pending") return
-    if (!window.confirm("Delete request? This cannot be undone.")) return
     try {
       const res = await fetch(buildDeleteUrl(req.id), { method: "DELETE" })
       const result = await res.json().catch(() => ({}))
@@ -294,7 +293,7 @@ export default function PINDashboard() {
       if (!res.ok) throw new Error(result.detail || `HTTP ${res.status}`)
 
       if (result === true) {
-        await fetchRequests(pinId!, "")
+        await get_pin_requests(pinId!, "")
         setEditOpen(false)
         setEditTarget(null)
       } else if (typeof result === "string") {
@@ -311,7 +310,7 @@ export default function PINDashboard() {
   useEffect(() => {
     if (!pinId) return
     const ctrl = new AbortController()
-    fetchRequests(pinId, undefined, ctrl.signal)
+    get_pin_requests(pinId, undefined, ctrl.signal)
     return () => ctrl.abort()
   }, [pinId])
 
@@ -320,8 +319,8 @@ export default function PINDashboard() {
     if (!requests.length) return
     const ids = requests.map((r) => r.id)
     const interval = setInterval(() => {
-      fetchViews(ids)
-      fetchShortlists(ids)
+      get_pin_request_views(ids)
+      get_pin_request_shortlists(ids)
     }, 60000)
     return () => clearInterval(interval)
   }, [requests])
@@ -482,7 +481,7 @@ export default function PINDashboard() {
                           size="sm"
                           variant="outline"
                           className="text-red-600 border-red-300 hover:text-red-700 hover:border-red-400"
-                          onClick={() => handleDelete(r)}
+                          onClick={() => delete_pin_request(r)}
                         >
                           Delete
                         </Button>
@@ -638,7 +637,7 @@ export default function PINDashboard() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       setSearchOpen(false)
-                      handleSearch()
+                      search_pin_requests()
                     }
                   }}
                 />
@@ -650,7 +649,7 @@ export default function PINDashboard() {
                 <Button
                   onClick={() => {
                     setSearchOpen(false)
-                    handleSearch()
+                    search_pin_requests()
                   }}
                 >
                   Search

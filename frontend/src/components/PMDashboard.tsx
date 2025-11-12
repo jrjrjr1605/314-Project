@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/pm-app-sidebar"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -37,12 +36,12 @@ export default function PMDashboard() {
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
-  const [dailyReportOpen, setDailyReportOpen] = useState(false)
-  const [weeklyReportOpen, setWeeklyReportOpen] = useState(false)
-  const [monthlyReportOpen, setMonthlyReportOpen] = useState(false)
+  const [generate_pm_daily_report, setDailyReportOpen] = useState(false)
+  const [generate_pm_weekly_report, setWeeklyReportOpen] = useState(false)
+  const [generate_pm_monthly_report, setMonthlyReportOpen] = useState(false)
 
   // --- Fetch helpers ---
-  const fetchAllCategories = async () => {
+  const get_category = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -62,8 +61,8 @@ export default function PMDashboard() {
     }
   }
 
-  const fetchSearchedCategories = async (term: string) => {
-    if (!term.trim()) return fetchAllCategories()
+  const search_category = async (term: string) => {
+    if (!term.trim()) return get_category()
     setLoading(true)
     setError(null)
     try {
@@ -86,11 +85,11 @@ export default function PMDashboard() {
   }
 
   useEffect(() => {
-    fetchAllCategories()
+    get_category()
   }, [])
 
   // --- CRUD actions ---
-  const handleCreate = async () => {
+  const create_category = async () => {
     if (!categoryName.trim()) return alert("Name is required")
     setSaving(true)
     try {
@@ -110,7 +109,7 @@ export default function PMDashboard() {
 
       // ✅ Handle true / "true" / { success: true } / 204
       if (res.ok && (result === true || result === "true" || result?.success === true || result === null)) {
-        await fetchAllCategories() // refresh table
+        await get_category() // refresh table
         setNewOpen(false) // close dialog
         setCategoryName("") // clear field
       } else if (typeof result === "string") {
@@ -125,7 +124,7 @@ export default function PMDashboard() {
     }
   }
 
-  const handleUpdate = async () => {
+  const update_category = async () => {
     if (!selectedCategory) return
     if (!categoryName.trim()) return alert("Name is required")
     setSaving(true)
@@ -144,7 +143,7 @@ export default function PMDashboard() {
       }
 
       if (res.ok && (result === true || result === "true" || result?.success === true || result === null)) {
-        await fetchAllCategories() // refresh table
+        await get_category() // refresh table
         setEditOpen(false) // close edit modal
         setSelectedCategory(null)
         setCategoryName("")
@@ -160,7 +159,7 @@ export default function PMDashboard() {
     }
   }
 
-  const handleDelete = async (cat: Category) => {
+  const delete_category = async (cat: Category) => {
     try {
       const res = await fetch(`${API_BASE}/api/categories/${cat.id}`, {
         method: "DELETE",
@@ -175,7 +174,7 @@ export default function PMDashboard() {
       }
 
       if (res.ok && (data === true || data === "true" || data?.success === true || data === null)) {
-        await fetchAllCategories() // refresh list
+        await get_category() // refresh list
       } else if (typeof data === "string") {
         alert(data)
       } else {
@@ -187,8 +186,8 @@ export default function PMDashboard() {
   }
 
   const handleSearch = () => {
-    if (searchTerm.trim()) fetchSearchedCategories(searchTerm)
-    else fetchAllCategories()
+    if (searchTerm.trim()) search_category(searchTerm)
+    else get_category()
   }
 
   // --- UI ---
@@ -244,7 +243,7 @@ export default function PMDashboard() {
                       className="sm:w-80"
                     />
                     <Button onClick={handleSearch}>Search</Button>
-                    <Button variant="outline" onClick={() => { setSearchTerm(""); fetchAllCategories() }}>Reset</Button>
+                    <Button variant="outline" onClick={() => { setSearchTerm(""); get_category() }}>Reset</Button>
                   </div>
                   <Button className="whitespace-nowrap" onClick={() => setNewOpen(true)}>+ Add Category</Button>
                 </div>
@@ -276,7 +275,7 @@ export default function PMDashboard() {
                           <TableCell>{cat.updated_at ? new Date(cat.updated_at).toLocaleDateString("en-SG") : "—"}</TableCell>
                           <TableCell className="text-right space-x-2">
                             <Button size="sm" variant="outline" onClick={() => { setSelectedCategory(cat); setCategoryName(cat.name); setEditOpen(true) }}>Edit</Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(cat)}>Delete</Button>
+                            <Button size="sm" variant="destructive" onClick={() => delete_category(cat)}>Delete</Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -307,7 +306,7 @@ export default function PMDashboard() {
                 <Button variant="outline" onClick={() => setNewOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={saving}>
+                <Button onClick={create_category} disabled={saving}>
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </DialogFooter>
@@ -335,14 +334,14 @@ export default function PMDashboard() {
                 <Button variant="outline" onClick={() => setEditOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleUpdate} disabled={saving}>
+                <Button onClick={update_category} disabled={saving}>
                   {saving ? "Saving..." : "Update"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           {/* 🟩 Report Generated Dialogs */}
-          <Dialog open={dailyReportOpen} onOpenChange={setDailyReportOpen}>
+          <Dialog open={generate_pm_daily_report} onOpenChange={setDailyReportOpen}>
             <DialogContent className="sm:max-w-md text-center">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold text-green-600">
@@ -365,7 +364,7 @@ export default function PMDashboard() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={weeklyReportOpen} onOpenChange={setWeeklyReportOpen}>
+          <Dialog open={generate_pm_weekly_report} onOpenChange={setWeeklyReportOpen}>
             <DialogContent className="sm:max-w-md text-center">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold text-green-600">
@@ -388,7 +387,7 @@ export default function PMDashboard() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={monthlyReportOpen} onOpenChange={setMonthlyReportOpen}>
+          <Dialog open={generate_pm_monthly_report} onOpenChange={setMonthlyReportOpen}>
             <DialogContent className="sm:max-w-md text-center">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold text-green-600">

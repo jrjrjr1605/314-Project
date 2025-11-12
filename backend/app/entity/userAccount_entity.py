@@ -103,11 +103,14 @@ class UserAccountEntity:
             if existing_email:
                 return "Email address already exists" # Return str if email address exists
             
+            role_info = (db.query(UserProfile).filter(UserProfile.name == user_data.get("role")).first())
+            role_id = role_info.id # Get the role
+
             try:
                 user = UserAccount(
                     username=user_data.get("username"),
                     email_address=user_data.get("email_address"),
-                    role=None if user_data.get("role") is None else user_data.get("role"),
+                    role=None if role_id is None else role_id,
                     status=user_data.get("status"),
                     password=user_data.get("password"),
                 ) # Create new UserAccount instance

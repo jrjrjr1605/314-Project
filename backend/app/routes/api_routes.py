@@ -23,7 +23,7 @@ def login(username: str = Form(...), password: str = Form(...)):
 
 # View
 @router.get("/users")
-def get_users():
+def get_all_users():
     controller = getUserController()
     users = controller.get_all_users()
 
@@ -309,25 +309,25 @@ def search_category(search_input: str):
 
 # Generate daily report
 @router.get("/pm-daily-report")
-def get_pm_daily_report():
+def generate_pm_daily_report():
     controller = generateDailyReportController()
-    result = controller.generate_daily_report()
+    result = controller.generate_pm_daily_report()
 
     return result # Return daily report data if success and error message on failure
 
 # Generate weekly report
 @router.get("/pm-weekly-report")
-def generate_weekly_report():
+def generate_pm_weekly_report():
     controller = generateWeeklyReportController()
-    result = controller.generate_weekly_report()
+    result = controller.generate_pm_weekly_report()
 
     return result # Return weekly report data if success and error message on failure
 
 # Generate monthly report
 @router.get("/pm-monthly-report")
-def get_pm_monthly_report():
+def generate_pm_monthly_report():
     controller = generateMonthlyReportController()
-    result = controller.generate_monthly_report()
+    result = controller.generate_pm_monthly_report()
 
     return result # Return monthly report data if success and error message on failure
 

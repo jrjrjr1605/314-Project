@@ -51,8 +51,8 @@ export default function UADashboard() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // --- Fetch all user profiles (roles) ---
-  async function fetchRoles() {
+  // --- Fetch all user profiles ---
+  async function get_user_profiles() {
     try {
       const res = await fetch("http://localhost:8000/api/user_profiles")
       const data = await res.json()
@@ -67,7 +67,7 @@ export default function UADashboard() {
   }
 
   // --- Fetch all users ---
-  async function fetchUsers() {
+  async function get_all_users() {
     setLoading(true)
     try {
       const res = await fetch("http://localhost:8000/api/users")
@@ -106,7 +106,7 @@ export default function UADashboard() {
 
   // --- Initial load ---
   useEffect(() => {
-    fetchRoles().then(fetchUsers)
+    get_user_profiles().then(get_all_users)
   }, [])
 
   // --- Helper to resolve role name ---
@@ -119,7 +119,7 @@ export default function UADashboard() {
   }
 
   // --- Manual search ---
-  async function handleSearch() {
+  async function search_user_profiles() {
     const query = new URLSearchParams({ search_input: searchTerm }).toString()
     const res = await fetch(`http://localhost:8000/api/users/search?${query}`)
     const data = await res.json()
@@ -132,7 +132,7 @@ export default function UADashboard() {
   }
 
   // --- Update user info ---
-  async function UpdateUser(e: React.FormEvent) {
+  async function update_user(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedUser) return
 
@@ -166,7 +166,7 @@ export default function UADashboard() {
       if (result === true) {
         // ✅ backend success: just refresh silently
         setOpen(false)
-        fetchUsers()
+        get_all_users()
       } else if (typeof result === "string") {
         // ⚠️ backend returned failure message
         alert(result)
@@ -177,16 +177,9 @@ export default function UADashboard() {
     }
   }
 
-  // --- Suspend / Reactivate user ---
-  async function toggleUserStatus(user: any) {
+  // --- Suspend  user ---
+  async function suspend_user(user: any) {
     const action = user.status === "active" ? "suspend" : "reactivate"
-    const confirmMsg =
-      user.status === "active"
-        ? `Suspend ${user.username}?`
-        : `Reactivate ${user.username}?`
-
-    if (!confirm(confirmMsg)) return
-
     try {
       const res = await fetch(
         `http://localhost:8000/api/users/${action}/${user.id}`,
@@ -196,7 +189,7 @@ export default function UADashboard() {
       const result = await res.json()
       if (result === true) {
         // ✅ success → silent refresh
-        fetchUsers()
+        get_all_users()
       } else if (typeof result === "string") {
         // ⚠️ failure message from backend
         alert(result)
@@ -282,7 +275,7 @@ export default function UADashboard() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm w-[250px]"
                 />
-                <Button onClick={handleSearch}>Search</Button>
+                <Button onClick={search_user_profiles}>Search</Button>
                 <Button variant="outline" onClick={resetFilters}>
                   Reset
                 </Button>
@@ -346,7 +339,7 @@ export default function UADashboard() {
                               : "default"
                           }
                           size="sm"
-                          onClick={() => toggleUserStatus(user)}
+                          onClick={() => suspend_user(user)}
                         >
                           {user.status === "active"
                             ? "Suspend"
@@ -371,7 +364,7 @@ export default function UADashboard() {
               </DialogHeader>
 
               {selectedUser && (
-                <form onSubmit={UpdateUser} className="space-y-4 mt-4">
+                <form onSubmit={update_user} className="space-y-4 mt-4">
                   <div className="grid gap-2">
                     <Label htmlFor="username">Username</Label>
                     <Input

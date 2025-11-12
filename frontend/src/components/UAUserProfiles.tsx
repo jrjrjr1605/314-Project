@@ -42,7 +42,7 @@ export default function UAUserProfiles() {
   const [searching, setSearching] = useState(false)
 
   // --- Fetch all profiles ---
-  async function fetchProfiles() {
+  async function get_user_profiles() {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/user_profiles`)
@@ -57,12 +57,12 @@ export default function UAUserProfiles() {
   }
 
   useEffect(() => {
-    fetchProfiles()
+    get_user_profiles()
   }, [])
 
   // --- Search ---
-  async function handleSearch() {
-    if (!searchInput.trim()) return fetchProfiles()
+  async function search_user_profiles() {
+    if (!searchInput.trim()) return get_user_profiles()
     setSearching(true)
     try {
       const res = await fetch(
@@ -80,7 +80,7 @@ export default function UAUserProfiles() {
   }
 
   // --- Create profile ---
-  async function handleCreateProfile(e: React.FormEvent) {
+  async function create_user_profile(e: React.FormEvent) {
     e.preventDefault()
     setActionLoading(true)
     try {
@@ -102,7 +102,7 @@ export default function UAUserProfiles() {
       if (result === true) {
         setNewProfile({ name: "" })
         setOpenDialog(false)
-        fetchProfiles()
+        get_user_profiles()
       } else if (typeof result === "string") {
         alert(result)
       } else {
@@ -117,7 +117,7 @@ export default function UAUserProfiles() {
   }
 
   // --- Update profile ---
-  async function handleUpdateProfile(e: React.FormEvent) {
+  async function update_user_profile(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedProfile) return
     setActionLoading(true)
@@ -138,7 +138,7 @@ export default function UAUserProfiles() {
       if (result === true) {
         setEditDialog(false)
         setSelectedProfile(null)
-        fetchProfiles()
+        get_user_profiles()
       } else if (typeof result === "string") {
         alert(result)
       } else {
@@ -153,9 +153,7 @@ export default function UAUserProfiles() {
   }
 
   // --- Suspend profile ---
-  async function handleSuspend(profile: UserProfile) {
-    if (!confirm(`⚠️ Suspend "${profile.name}"?`)) return
-    setActionLoading(true)
+  async function suspend_user_profile(profile: UserProfile) {
     try {
       const res = await fetch(`${API_BASE}/api/user_profiles/suspend/${profile.id}`, {
         method: "PUT",
@@ -169,7 +167,7 @@ export default function UAUserProfiles() {
       }
 
       if (result === true) {
-        fetchProfiles()
+        get_user_profiles()
       } else if (typeof result === "string") {
         alert(result)
       } else {
@@ -199,7 +197,7 @@ export default function UAUserProfiles() {
       }
 
       if (result === true) {
-        fetchProfiles()
+        get_user_profiles()
       } else if (typeof result === "string") {
         alert(result)
       } else {
@@ -228,14 +226,14 @@ export default function UAUserProfiles() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="w-[250px]"
               />
-              <Button onClick={handleSearch} disabled={searching || loading}>
+              <Button onClick={search_user_profiles} disabled={searching || loading}>
                 {searching ? "Searching..." : "Search"}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => {
                   setSearchInput("")
-                  fetchProfiles()
+                  get_user_profiles()
                 }}
                 disabled={loading}
               >
@@ -304,7 +302,7 @@ export default function UAUserProfiles() {
                             variant="destructive"
                             size="sm"
                             disabled={actionLoading}
-                            onClick={() => handleSuspend(profile)}
+                            onClick={() => suspend_user_profile(profile)}
                           >
                             Suspend
                           </Button>
@@ -335,7 +333,7 @@ export default function UAUserProfiles() {
             <DialogTitle>Create New User Profile</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateProfile} className="space-y-3">
+          <form onSubmit={create_user_profile} className="space-y-3">
             <div>
               <Label>Name</Label>
               <Input
@@ -370,7 +368,7 @@ export default function UAUserProfiles() {
           </DialogHeader>
 
           {selectedProfile && (
-            <form onSubmit={handleUpdateProfile} className="space-y-3">
+            <form onSubmit={update_user_profile} className="space-y-3">
               <div>
                 <Label>Name</Label>
                 <Input

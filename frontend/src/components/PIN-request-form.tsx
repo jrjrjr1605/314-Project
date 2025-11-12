@@ -102,7 +102,7 @@ export default function RequestForm() {
   }
 
   // 🟩 Submit request to backend
-  async function handleSubmit(e: React.FormEvent) {
+  async function create_pin_request(e: React.FormEvent) {
     e.preventDefault()
 
     if (!form.pin_user_id) {
@@ -164,7 +164,7 @@ export default function RequestForm() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={create_pin_request} className="space-y-6">
             {/* PIN User ID */}
             <div className="grid gap-2">
               <Label htmlFor="pin_user_id">PIN User ID</Label>
