@@ -202,10 +202,12 @@ class PinRequestEntity:
                 req = db.query(Request).filter(Request.id == request_id).first()
                 if not req:
                     return "Request not found"
+                
+                if req.view is None:
+                    req.view = 0
 
-                # Return current view count, default 0 if None
-                return req.view or 0
-
+                # Return current view count
+                return req.view
         except Exception as e:
             print(f"[ERROR] get_pin_request_views failed for ID {request_id}: {e}")
             return f"Failed to fetch views: {str(e)}" # Return str on failure
@@ -224,7 +226,9 @@ class PinRequestEntity:
                     .count()
                 )
 
-                return shortlists_count or 0  # Return integer count
+                if shortlists_count is None:
+                    shortlists_count = 0
+                return shortlists_count # Return integer count
 
         except Exception as e:
             print(f"[ERROR] get_pin_request_shortlists failed for ID {request_id}: {e}")

@@ -33,19 +33,19 @@ class searchCategoryController:
         return entity.search_category(search_input) # Call the search_categories method of the entity and return the result
 
 class generateDailyReportController:
-    def generate_daily_report(self):
+    def generate_pm_daily_report(self):
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.generate_pm_daily_report() # Call the generate_daily_report method of the entity and return the result
     
 class generateWeeklyReportController:
-    def generate_weekly_report(self):
+    def generate_pm_weekly_report(self):
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.generate_pm_weekly_report() # Call the generate_weekly_report method of the entity and return the result
     
 class generateMonthlyReportController:
-    def generate_monthly_report(self):
+    def generate_pm_monthly_report(self):
         entity = PinRequestEntity() # Create an instance of PinRequestEntity
 
         return entity.generate_pm_monthly_report() # Call the generate_monthly_report method of the entity and return the result
